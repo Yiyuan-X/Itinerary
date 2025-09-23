@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能旅行规划器</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://webapi.amap.com/maps?v=2.0&key=d38ee7b865fba3fdc978bfd06035623d"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 头部导航 -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="app-title">
+                    <span class="title-icon">✈️</span>
+                    智能旅行规划器
+                </h1>
+                <button class="add-trip-btn" id="addTripBtn">
+                    <span class="btn-icon">+</span>
+                    添加旅行计划
+                </button>
+            </div>
+        </header>
+
+        <!-- 主要内容区域 -->
+        <main class="main-content">
+            <!-- 地图容器 -->
+            <section class="map-section">
+                <div class="map-container">
+                    <div id="map" class="map"></div>
+                    <div class="map-overlay">
+                        <div class="map-controls">
+                            <button class="map-control-btn" id="locateBtn" title="定位当前位置">
+                                <span class="control-icon">📍</span>
+                            </button>
+                            <button class="map-control-btn" id="refreshMapBtn" title="刷新地图">
+                                <span class="control-icon">🔄</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 旅行计划列表 -->
+            <section class="trips-section">
+                <div class="trips-header">
+                    <h2 class="section-title">我的旅行计划</h2>
+                    <div class="trips-filter">
+                        <select class="filter-select" id="statusFilter">
+                            <option value="all">全部状态</option>
+                            <option value="planning">计划中</option>
+                            <option value="completed">已完成</option>
+                            <option value="cancelled">已取消</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="trips-container" id="tripsContainer">
+                    <!-- 旅行计划卡片将在这里动态生成 -->
+                    <div class="empty-state" id="emptyState">
+                        <div class="empty-icon">🗺️</div>
+                        <h3>还没有旅行计划</h3>
+                        <p>点击上方"添加旅行计划"按钮开始规划您的第一次旅行吧！</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 添加/编辑旅行计划模态框 -->
+        <div class="modal" id="tripModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title" id="modalTitle">添加旅行计划</h3>
+                    <button class="modal-close" id="modalClose">&times;</button>
+                </div>
+
+                <form class="trip-form" id="tripForm">
+                    <div class="form-group">
+                        <label class="form-label" for="tripTitle">旅行标题</label>
+                        <input type="text" class="form-input" id="tripTitle" name="title" placeholder="给您的旅行起个名字" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="tripDestination">目的地</label>
+                        <input type="text" class="form-input" id="tripDestination" name="destination" placeholder="输入目的地城市或地点" required>
+                        <div class="location-suggestions" id="locationSuggestions"></div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="startDate">开始日期</label>
+                            <input type="date" class="form-input" id="startDate" name="startDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="endDate">结束日期</label>
+                            <input type="date" class="form-input" id="endDate" name="endDate" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="tripDescription">旅行描述</label>
+                        <textarea class="form-textarea" id="tripDescription" name="description" placeholder="描述一下您的旅行计划（可选）" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="tripStatus">状态</label>
+                        <select class="form-select" id="tripStatus" name="status">
+                            <option value="planning">计划中</option>
+                            <option value="completed">已完成</option>
+                            <option value="cancelled">已取消</option>
+                        </select>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelBtn">取消</button>
+                        <button type="submit" class="btn btn-primary" id="saveBtn">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 确认删除模态框 -->
+        <div class="modal" id="confirmModal">
+            <div class="modal-content small">
+                <div class="modal-header">
+                    <h3 class="modal-title">确认删除</h3>
+                    <button class="modal-close" id="confirmModalClose">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>确定要删除这个旅行计划吗？此操作无法撤销。</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="confirmCancelBtn">取消</button>
+                    <button class="btn btn-danger" id="confirmDeleteBtn">删除</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 加载指示器 -->
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <p>加载中...</p>
+        </div>
+
+        <!-- Toast 通知 -->
+        <div class="toast" id="toast">
+            <div class="toast-content">
+                <span class="toast-icon"></span>
+                <span class="toast-message"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript 模块 -->
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/amap-api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

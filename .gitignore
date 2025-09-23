@@ -1,0 +1,47 @@
+# 系统文件
+.DS_Store
+.CFUserTextEncoding
+Thumbs.db
+
+# 用户配置文件
+.bash_history
+.zsh_history
+.zshrc
+.zcompdump
+.zsh_sessions/
+.gitconfig
+.npmrc
+
+# IDE和编辑器
+.vscode/
+.cursor/
+.codebuddy/
+.claude/
+.claude.json
+.claude.json.backup
+
+# 应用程序和库
+Applications/
+Library/
+Movies/
+Music/
+Pictures/
+Documents/
+Desktop/
+Downloads/
+Public/
+CodeBuddy/
+cloudbase-mcp/
+
+# 开发工具
+.npm/
+.nvm/
+.local/
+.config/
+.cache/
+.docker/
+.swiftpm/
+.craft-versions/
+
+# 其他
+uv-linux-x86_64
