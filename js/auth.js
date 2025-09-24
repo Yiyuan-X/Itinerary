@@ -54,22 +54,17 @@ class AuthManager {
             const expiresAt = localStorage.getItem(this.storageKeys.expiresAt);
             const userStr = localStorage.getItem(this.storageKeys.user);
 
-            if (accessToken && refreshToken && expiresAt && userStr) {
+            if (accessToken && userStr) {
                 this.tokens = {
                     access_token: accessToken,
                     refresh_token: refreshToken,
-                    expires_at: parseInt(expiresAt)
+                    expires_at: expiresAt ? parseInt(expiresAt) : Date.now() + (24 * 60 * 60 * 1000)
                 };
                 this.currentUser = JSON.parse(userStr);
 
-                // 检查token是否过期
-                if (Date.now() < this.tokens.expires_at) {
-                    this.isAuthenticated = true;
-                    this.emit('authenticated', this.currentUser);
-                } else {
-                    // Token过期，尝试刷新
-                    this.refreshToken();
-                }
+                // 检查token是否过期 (本地模式下不检查过期)
+                this.isAuthenticated = true;
+                this.emit('authenticated', this.currentUser);
             }
         } catch (error) {
             console.error('初始化认证状态失败:', error);
@@ -102,20 +97,40 @@ class AuthManager {
      */
     async login(email, password, rememberMe = false) {
         try {
-            const response = await this.apiRequest(this.endpoints.login, 'POST', {
-                email,
-                password,
-                remember_me: rememberMe,
-                device_info: this.getDeviceInfo()
+            // 模拟登录验证
+            if (!email || !password) {
+                throw new Error('邮箱和密码不能为空');
+            }
+
+            // 简单的演示用户验证（实际应用中应该调用后端API）
+            if (password.length < 6) {
+                throw new Error('密码至少需要6个字符');
+            }
+
+            // 模拟用户数据
+            const mockUser = {
+                id: generateId(),
+                email: email,
+                name: email.split('@')[0],
+                avatar: '/assets/default-avatar.png',
+                created_at: new Date().toISOString()
+            };
+
+            // 模拟token
+            const mockTokens = {
+                access_token: generateId(),
+                refresh_token: generateId(),
+                expires_in: 24 * 60 * 60 // 24小时
+            };
+
+            await this.handleAuthSuccess({
+                user: mockUser,
+                tokens: mockTokens
             });
 
-            if (response.success) {
-                await this.handleAuthSuccess(response.data);
-                this.emit('login', this.currentUser);
-                return { success: true, user: this.currentUser };
-            } else {
-                throw new Error(response.message);
-            }
+            this.emit('login', this.currentUser);
+            return { success: true, user: this.currentUser };
+
         } catch (error) {
             console.error('登录失败:', error);
             this.emit('loginError', error);
@@ -130,18 +145,43 @@ class AuthManager {
      */
     async register(userData) {
         try {
-            const response = await this.apiRequest(this.endpoints.register, 'POST', {
-                ...userData,
-                device_info: this.getDeviceInfo()
+            // 验证注册数据
+            if (!userData.email || !userData.password) {
+                throw new Error('邮箱和密码不能为空');
+            }
+
+            if (!userData.username) {
+                throw new Error('用户名不能为空');
+            }
+
+            if (userData.password.length < 6) {
+                throw new Error('密码至少需要6个字符');
+            }
+
+            // 模拟用户数据
+            const mockUser = {
+                id: generateId(),
+                email: userData.email,
+                name: userData.username,
+                avatar: '/assets/default-avatar.png',
+                created_at: new Date().toISOString()
+            };
+
+            // 模拟token
+            const mockTokens = {
+                access_token: generateId(),
+                refresh_token: generateId(),
+                expires_in: 24 * 60 * 60 // 24小时
+            };
+
+            await this.handleAuthSuccess({
+                user: mockUser,
+                tokens: mockTokens
             });
 
-            if (response.success) {
-                await this.handleAuthSuccess(response.data);
-                this.emit('register', this.currentUser);
-                return { success: true, user: this.currentUser };
-            } else {
-                throw new Error(response.message);
-            }
+            this.emit('register', this.currentUser);
+            return { success: true, user: this.currentUser };
+
         } catch (error) {
             console.error('注册失败:', error);
             this.emit('registerError', error);

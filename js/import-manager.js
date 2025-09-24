@@ -122,31 +122,118 @@ class ImportManager {
      */
     async parseText(text, options = {}) {
         try {
-            // 先进行本地预解析
+            // 进行本地解析
             const localResult = this.parseTextLocally(text);
 
-            // 发送到服务器进行智能解析
-            const response = await auth.authenticatedRequest(
-                this.endpoints.parse,
-                'POST',
-                {
-                    type: 'text',
-                    content: text,
-                    local_result: localResult,
-                    options: options
-                }
-            );
+            // 创建解析结果
+            const parseResult = {
+                id: generateId(),
+                type: 'text',
+                content: text,
+                parsed_items: localResult.parsed_items,
+                confidence: localResult.confidence,
+                raw_matches: localResult.raw_matches,
+                created_at: new Date().toISOString()
+            };
 
-            if (response.success) {
-                this.currentImport = response.data;
-                this.emit('parseSuccess', response.data);
-                return response.data;
-            } else {
-                throw new Error(response.message);
-            }
+            this.currentImport = parseResult;
+
+            // 保存到导入历史
+            localStorageService.addImportHistory({
+                type: 'text',
+                content: text.substring(0, 200) + '...',
+                parsed_items_count: localResult.parsed_items.length,
+                confidence: localResult.confidence,
+                status: 'completed'
+            });
+
+            this.emit('parseSuccess', parseResult);
+            return parseResult;
         } catch (error) {
             console.error('解析文本失败:', error);
             this.emit('parseError', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 确认导入
+     * @param {string} importId - 导入ID
+     * @param {Object} confirmData - 确认数据
+     * @returns {Promise<Object>} 确认结果
+     */
+    async confirmImport(importId, confirmData) {
+        try {
+            // 模拟确认导入
+            const result = {
+                id: importId,
+                confirmed_items: confirmData.items || [],
+                success: true,
+                created_trips: [],
+                message: '导入成功'
+            };
+
+            // 如果有确认的项目，创建相应的行程项目
+            if (confirmData.items && confirmData.items.length > 0) {
+                for (const item of confirmData.items) {
+                    if (confirmData.create_trip) {
+                        // 创建新行程
+                        const tripData = {
+                            title: item.title || '导入的行程',
+                            start_date: item.datetime?.date || new Date().toISOString().split('T')[0],
+                            end_date: item.datetime?.date || new Date().toISOString().split('T')[0],
+                            status: 'planning',
+                            description: `通过${item.type === 'flight' ? '航班' : '火车'}信息导入`
+                        };
+
+                        const newTrip = localStorageService.createTrip(tripData);
+                        result.created_trips.push(newTrip);
+
+                        // 添加行程项目
+                        const itemData = {
+                            trip_id: newTrip.id,
+                            title: item.title,
+                            item_type: 'transport',
+                            start_datetime: item.datetime?.datetime || new Date().toISOString(),
+                            location_name: item.departure?.airport_name || item.departure?.station_name || '',
+                            transportation: {
+                                transport_type: item.type,
+                                flight_number: item.flight_number,
+                                train_number: item.train_number,
+                                carrier: item.carrier
+                            },
+                            cost: item.price,
+                            notes: `导入自: ${item.type === 'flight' ? '航班信息' : '火车信息'}`
+                        };
+
+                        localStorageService.createTripItem(itemData);
+                    }
+                }
+            }
+
+            this.emit('importConfirmed', result);
+            return result;
+        } catch (error) {
+            console.error('确认导入失败:', error);
+            this.emit('importError', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 获取导入历史
+     * @param {Object} options - 查询选项
+     * @returns {Promise<Array>} 导入历史
+     */
+    async loadImportHistory(options = {}) {
+        try {
+            const history = localStorageService.getImportHistory();
+            this.importHistory = history;
+            this.emit('historyLoaded', this.importHistory);
+            return this.importHistory;
+        } catch (error) {
+            console.error('加载导入历史失败:', error);
+            this.emit('historyError', error);
             throw error;
         }
     }

@@ -97,43 +97,67 @@ class WeatherService {
                 return cached;
             }
 
-            // 构建请求参数
-            const params = new URLSearchParams();
+            // 使用高德地图天气API (模拟数据，实际需要调用相应MCP工具)
+            let cityName = '';
             if (typeof location === 'string') {
-                params.set('location', location);
+                cityName = location;
             } else if (location.latitude && location.longitude) {
-                params.set('lat', location.latitude.toString());
-                params.set('lng', location.longitude.toString());
-            } else {
-                throw new Error('位置信息格式不正确');
+                cityName = '当前位置'; // 实际应用中应该通过逆地理编码获取城市名
             }
 
-            if (date) {
-                params.set('date', date);
-            }
+            // 模拟天气数据
+            const mockWeatherData = {
+                location: {
+                    name: cityName,
+                    coordinates: location
+                },
+                current: {
+                    temperature: Math.floor(Math.random() * 30) + 5, // 5-35度
+                    feels_like: Math.floor(Math.random() * 30) + 5,
+                    humidity: Math.floor(Math.random() * 100),
+                    weather: this.getRandomWeather(),
+                    weather_code: this.getRandomWeatherCode(),
+                    wind_speed: Math.floor(Math.random() * 20),
+                    wind_direction: Math.floor(Math.random() * 360),
+                    visibility: Math.floor(Math.random() * 20) + 5,
+                    uv_index: Math.floor(Math.random() * 10),
+                    pressure: Math.floor(Math.random() * 100) + 1000,
+                    updated_at: new Date().toISOString()
+                },
+                timestamp: new Date().toISOString()
+            };
 
-            // 发送请求
-            const response = await auth.authenticatedRequest(
-                `${this.endpoints.current}?${params.toString()}`,
-                'GET'
-            );
+            // 添加天气图标
+            mockWeatherData.current.weather_icon = this.getWeatherIcon(mockWeatherData.current.weather_code);
 
-            if (response.success) {
-                const weatherData = this.processWeatherData(response.data);
+            // 存入缓存
+            this.setCache(cacheKey, mockWeatherData);
 
-                // 存入缓存
-                this.setCache(cacheKey, weatherData);
-
-                this.emit('weatherLoaded', weatherData);
-                return weatherData;
-            } else {
-                throw new Error(response.message);
-            }
+            this.emit('weatherLoaded', mockWeatherData);
+            return mockWeatherData;
         } catch (error) {
             console.error('获取当前天气失败:', error);
             this.emit('weatherError', error);
             throw error;
         }
+    }
+
+    /**
+     * 获取随机天气状态
+     * @returns {string} 天气状态
+     */
+    getRandomWeather() {
+        const weathers = ['晴天', '多云', '阴天', '小雨', '中雨', '雷阵雨', '雾'];
+        return weathers[Math.floor(Math.random() * weathers.length)];
+    }
+
+    /**
+     * 获取随机天气代码
+     * @returns {string} 天气代码
+     */
+    getRandomWeatherCode() {
+        const codes = ['sunny', 'cloudy', 'overcast', 'light_rain', 'moderate_rain', 'thunderstorm', 'fog'];
+        return codes[Math.floor(Math.random() * codes.length)];
     }
 
     /**

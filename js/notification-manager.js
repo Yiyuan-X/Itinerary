@@ -189,25 +189,66 @@ class NotificationManager {
                 reminderData.message = this.generateReminderMessage(reminderData);
             }
 
-            const response = await auth.authenticatedRequest(
-                this.endpoints.reminders,
-                'POST',
-                reminderData
-            );
+            const newReminder = localStorageService.createReminder(reminderData);
+            this.reminders.push(newReminder);
+            this.sortReminders();
 
-            if (response.success) {
-                const newReminder = response.data.reminder;
-                this.reminders.push(newReminder);
-                this.sortReminders();
-
-                this.emit('reminderCreated', newReminder);
-                return newReminder;
-            } else {
-                throw new Error(response.message);
-            }
+            this.emit('reminderCreated', newReminder);
+            return newReminder;
         } catch (error) {
             console.error('创建提醒失败:', error);
             this.emit('createError', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 加载提醒列表
+     * @param {Object} options - 查询选项
+     * @returns {Promise<Array>} 提醒列表
+     */
+    async loadReminders(options = {}) {
+        try {
+            const reminders = localStorageService.getReminders({
+                status: options.status || 'pending',
+                ...options
+            });
+
+            this.reminders = reminders;
+            this.sortReminders();
+
+            this.emit('remindersLoaded', this.reminders);
+            return this.reminders;
+        } catch (error) {
+            console.error('加载提醒失败:', error);
+            this.emit('loadError', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 更新提醒状态
+     * @param {number} reminderId - 提醒ID
+     * @param {string} status - 状态
+     * @param {Object} additionalData - 额外数据
+     * @returns {Promise<void>}
+     */
+    async updateReminderStatus(reminderId, status, additionalData = {}) {
+        try {
+            const updatedReminder = localStorageService.updateReminderStatus(reminderId, status, additionalData);
+
+            if (updatedReminder) {
+                // 更新本地数据
+                const reminder = this.reminders.find(r => r.id === reminderId);
+                if (reminder) {
+                    reminder.status = status;
+                    Object.assign(reminder, additionalData);
+                }
+
+                this.emit('statusUpdated', { reminderId, status, additionalData });
+            }
+        } catch (error) {
+            console.error('更新提醒状态失败:', error);
             throw error;
         }
     }

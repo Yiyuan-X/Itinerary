@@ -79,40 +79,22 @@ class TripManager {
      */
     async loadTrips(options = {}) {
         try {
-            const params = new URLSearchParams({
+            // 使用本地存储服务
+            const trips = localStorageService.getTrips({
                 status: options.status || this.filters.status,
                 sort: options.sort || this.filters.sort,
-                page: options.page || this.pagination.currentPage,
-                per_page: this.pagination.perPage,
-                ...options
+                search: options.search || this.filters.search
             });
 
-            if (options.search || this.filters.search) {
-                params.set('search', options.search || this.filters.search);
-            }
+            this.trips = trips;
 
-            const response = await auth.authenticatedRequest(
-                `${this.endpoints.trips}?${params.toString()}`,
-                'GET'
-            );
+            // 更新过滤器状态
+            if (options.status) this.filters.status = options.status;
+            if (options.sort) this.filters.sort = options.sort;
+            if (options.search !== undefined) this.filters.search = options.search;
 
-            if (response.success) {
-                this.trips = response.data.trips;
-                this.pagination = {
-                    ...this.pagination,
-                    ...response.data.pagination
-                };
-
-                // 更新过滤器状态
-                if (options.status) this.filters.status = options.status;
-                if (options.sort) this.filters.sort = options.sort;
-                if (options.search !== undefined) this.filters.search = options.search;
-
-                this.emit('tripsLoaded', this.trips);
-                return this.trips;
-            } else {
-                throw new Error(response.message);
-            }
+            this.emit('tripsLoaded', this.trips);
+            return this.trips;
         } catch (error) {
             console.error('加载行程列表失败:', error);
             this.emit('loadError', error);
@@ -127,17 +109,14 @@ class TripManager {
      */
     async getTripById(tripId) {
         try {
-            const response = await auth.authenticatedRequest(
-                this.endpoints.tripById(tripId),
-                'GET'
-            );
+            const trip = localStorageService.getTrip(tripId);
 
-            if (response.success) {
-                this.currentTrip = response.data.trip;
+            if (trip) {
+                this.currentTrip = trip;
                 this.emit('tripLoaded', this.currentTrip);
                 return this.currentTrip;
             } else {
-                throw new Error(response.message);
+                throw new Error('行程不存在');
             }
         } catch (error) {
             console.error('获取行程详情失败:', error);
@@ -156,20 +135,10 @@ class TripManager {
             // 数据验证
             this.validateTripData(tripData);
 
-            const response = await auth.authenticatedRequest(
-                this.endpoints.trips,
-                'POST',
-                tripData
-            );
-
-            if (response.success) {
-                const newTrip = response.data.trip;
-                this.trips.unshift(newTrip);
-                this.emit('tripCreated', newTrip);
-                return newTrip;
-            } else {
-                throw new Error(response.message);
-            }
+            const newTrip = localStorageService.createTrip(tripData);
+            this.trips.unshift(newTrip);
+            this.emit('tripCreated', newTrip);
+            return newTrip;
         } catch (error) {
             console.error('创建行程失败:', error);
             this.emit('createError', error);
@@ -188,15 +157,9 @@ class TripManager {
             // 数据验证
             this.validateTripData(tripData, false);
 
-            const response = await auth.authenticatedRequest(
-                this.endpoints.tripById(tripId),
-                'PUT',
-                tripData
-            );
+            const updatedTrip = localStorageService.updateTrip(tripId, tripData);
 
-            if (response.success) {
-                const updatedTrip = response.data.trip;
-
+            if (updatedTrip) {
                 // 更新本地数据
                 const index = this.trips.findIndex(trip => trip.id === tripId);
                 if (index !== -1) {
@@ -210,7 +173,7 @@ class TripManager {
                 this.emit('tripUpdated', updatedTrip);
                 return updatedTrip;
             } else {
-                throw new Error(response.message);
+                throw new Error('行程不存在');
             }
         } catch (error) {
             console.error('更新行程失败:', error);
@@ -226,12 +189,9 @@ class TripManager {
      */
     async deleteTrip(tripId) {
         try {
-            const response = await auth.authenticatedRequest(
-                this.endpoints.tripById(tripId),
-                'DELETE'
-            );
+            const success = localStorageService.deleteTrip(tripId);
 
-            if (response.success) {
+            if (success) {
                 // 从本地数据中移除
                 this.trips = this.trips.filter(trip => trip.id !== tripId);
 
@@ -242,7 +202,7 @@ class TripManager {
                 this.emit('tripDeleted', tripId);
                 return true;
             } else {
-                throw new Error(response.message);
+                throw new Error('删除失败');
             }
         } catch (error) {
             console.error('删除行程失败:', error);
