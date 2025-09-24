@@ -187,8 +187,8 @@ const DOM = {
      */
     show(element) {
         if (element) {
+            this.removeClass(element, 'hidden');
             element.style.display = '';
-            this.addClass(element, 'show');
         }
     },
 
@@ -198,12 +198,7 @@ const DOM = {
      */
     hide(element) {
         if (element) {
-            this.removeClass(element, 'show');
-            setTimeout(() => {
-                if (!element.classList.contains('show')) {
-                    element.style.display = 'none';
-                }
-            }, 300);
+            this.addClass(element, 'hidden');
         }
     },
 

@@ -399,14 +399,28 @@
     <script src="app.js"></script>
 
     <script>
+        // 隐藏全局加载器
+        function hideGlobalLoader() {
+            const globalLoader = document.getElementById('globalLoader');
+            if (globalLoader) {
+                globalLoader.style.display = 'none';
+            }
+        }
+
         // 应用初始化
         document.addEventListener('DOMContentLoaded', function() {
             try {
                 console.log('DOM加载完成，开始初始化应用...');
+
+                // 确保全局加载器被隐藏
+                setTimeout(hideGlobalLoader, 100);
+
                 app = new TravelPlannerApp();
                 window.app = app; // 暴露到全局作用域以供HTML中的onclick使用
             } catch (error) {
                 console.error('应用初始化异常:', error);
+                hideGlobalLoader();
+
                 // 显示错误信息
                 document.body.innerHTML = `
                     <div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #f8fafc;">
@@ -423,10 +437,12 @@
         // 全局错误处理
         window.addEventListener('error', function(e) {
             console.error('全局错误:', e.error);
+            hideGlobalLoader();
         });
 
         window.addEventListener('unhandledrejection', function(e) {
             console.error('未处理的Promise拒绝:', e.reason);
+            hideGlobalLoader();
         });
     </script>
 </body>

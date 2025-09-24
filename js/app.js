@@ -25,6 +25,9 @@ class TravelPlannerApp {
         try {
             console.log('开始初始化应用程序...');
 
+            // 隐藏全局加载器
+            this.hideGlobalLoader();
+
             // 显示加载指示器
             Loading.show();
 
@@ -66,8 +69,19 @@ class TravelPlannerApp {
 
         } catch (error) {
             console.error('应用初始化失败:', error);
+            this.hideGlobalLoader();
             Loading.hide();
             Toast.error('应用初始化失败，请刷新页面重试');
+        }
+    }
+
+    /**
+     * 隐藏全局加载器
+     */
+    hideGlobalLoader() {
+        const globalLoader = DOM.query('#globalLoader');
+        if (globalLoader) {
+            DOM.hide(globalLoader);
         }
     }
 

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试页面 - 智能行程规划器</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        .status {
+            padding: 8px 16px;
+            border-radius: 6px;
+            margin: 5px 0;
+        }
+        .status.success { background: #10b981; color: white; }
+        .status.error { background: #ef4444; color: white; }
+        .status.info { background: #3b82f6; color: white; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>智能旅行规划器 - 测试页面</h1>
+
+        <div class="test-section">
+            <h2>基础功能测试</h2>
+            <div id="test-results">
+                <!-- 测试结果将显示在这里 -->
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>界面预览</h2>
+            <div class="welcome-content">
+                <div class="welcome-hero">
+                    <h2>智能行程规划，让旅行更简单</h2>
+                    <p>自动导入票务信息，智能路线规划，实时天气提醒</p>
+                    <div class="welcome-actions">
+                        <button class="btn btn-primary btn-large" onclick="testFunction()">测试按钮</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript 文件 -->
+    <script src="utils.js"></script>
+    <script>
+        function testFunction() {
+            console.log('测试按钮点击成功');
+            Toast.success('测试成功！');
+        }
+
+        function runTests() {
+            const results = document.getElementById('test-results');
+            let testResults = [];
+
+            // 测试1: 检查工具函数是否加载
+            try {
+                if (typeof DOM !== 'undefined') {
+                    testResults.push('<div class="status success">✅ DOM工具已加载</div>');
+                } else {
+                    testResults.push('<div class="status error">❌ DOM工具未加载</div>');
+                }
+            } catch (e) {
+                testResults.push('<div class="status error">❌ DOM工具加载异常: ' + e.message + '</div>');
+            }
+
+            // 测试2: 检查Toast是否工作
+            try {
+                if (typeof Toast !== 'undefined') {
+                    testResults.push('<div class="status success">✅ Toast工具已加载</div>');
+                } else {
+                    testResults.push('<div class="status error">❌ Toast工具未加载</div>');
+                }
+            } catch (e) {
+                testResults.push('<div class="status error">❌ Toast工具加载异常: ' + e.message + '</div>');
+            }
+
+            // 测试3: 检查CSS是否加载
+            try {
+                const testEl = document.createElement('div');
+                testEl.className = 'hidden';
+                document.body.appendChild(testEl);
+                const computed = window.getComputedStyle(testEl);
+                if (computed.display === 'none') {
+                    testResults.push('<div class="status success">✅ CSS样式正常加载</div>');
+                } else {
+                    testResults.push('<div class="status error">❌ CSS样式未正确加载</div>');
+                }
+                document.body.removeChild(testEl);
+            } catch (e) {
+                testResults.push('<div class="status error">❌ CSS测试异常: ' + e.message + '</div>');
+            }
+
+            // 测试4: 检查本地存储
+            try {
+                localStorage.setItem('test', 'test_value');
+                const value = localStorage.getItem('test');
+                if (value === 'test_value') {
+                    testResults.push('<div class="status success">✅ 本地存储正常工作</div>');
+                } else {
+                    testResults.push('<div class="status error">❌ 本地存储异常</div>');
+                }
+                localStorage.removeItem('test');
+            } catch (e) {
+                testResults.push('<div class="status error">❌ 本地存储不可用: ' + e.message + '</div>');
+            }
+
+            results.innerHTML = testResults.join('');
+
+            // 显示成功消息
+            setTimeout(() => {
+                if (typeof Toast !== 'undefined') {
+                    Toast.success('测试完成！');
+                }
+            }, 500);
+        }
+
+        // 页面加载完成后运行测试
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('测试页面加载完成');
+            runTests();
+        });
+
+        // 全局错误处理
+        window.addEventListener('error', function(e) {
+            console.error('测试页面错误:', e.error);
+            const results = document.getElementById('test-results');
+            if (results) {
+                results.innerHTML += '<div class="status error">❌ 页面错误: ' + e.error.message + '</div>';
+            }
+        });
+    </script>
+</body>
+</html>
