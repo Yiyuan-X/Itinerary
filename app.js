@@ -31,6 +31,9 @@ class TravelPlannerApp {
             // 显示加载指示器
             Loading.show();
 
+            // 等待DOM完全加载（额外保险）
+            await this.waitForDOM();
+
             // 缓存DOM元素
             this.cacheElements();
 
@@ -73,6 +76,26 @@ class TravelPlannerApp {
             Loading.hide();
             Toast.error('应用初始化失败，请刷新页面重试');
         }
+    }
+
+    /**
+     * 等待DOM完全加载
+     */
+    async waitForDOM() {
+        return new Promise((resolve) => {
+            if (document.readyState === 'complete') {
+                resolve();
+            } else {
+                const checkDOM = () => {
+                    if (document.readyState === 'complete') {
+                        resolve();
+                    } else {
+                        setTimeout(checkDOM, 10);
+                    }
+                };
+                checkDOM();
+            }
+        });
     }
 
     /**
@@ -152,30 +175,59 @@ class TravelPlannerApp {
      * 绑定事件监听器
      */
     bindEvents() {
+        console.log('开始绑定事件监听器...');
+
+        // 安全的事件绑定函数
+        const bindEvent = (element, elementName, event, handler) => {
+            if (element) {
+                element.addEventListener(event, handler);
+                console.log(`✓ 成功绑定事件: ${elementName} -> ${event}`);
+                return true;
+            } else {
+                console.warn(`✗ 无法绑定事件: ${elementName} (元素不存在)`);
+                return false;
+            }
+        };
+
         // 导航事件
-        DOM.on(this.elements.loginBtn, 'click', () => this.showAuthModal('login'));
-        DOM.on(this.elements.registerBtn, 'click', () => this.showAuthModal('register'));
-        DOM.on(this.elements.logoutBtn, 'click', () => this.logout());
-        DOM.on(this.elements.startPlanningBtn, 'click', () => this.showAuthModal('register'));
+        bindEvent(this.elements.loginBtn, 'loginBtn', 'click', () => {
+            console.log('登录按钮被点击');
+            this.showAuthModal('login');
+        });
+
+        bindEvent(this.elements.registerBtn, 'registerBtn', 'click', () => {
+            console.log('注册按钮被点击');
+            this.showAuthModal('register');
+        });
+
+        bindEvent(this.elements.logoutBtn, 'logoutBtn', 'click', () => {
+            console.log('登出按钮被点击');
+            this.logout();
+        });
+
+        bindEvent(this.elements.startPlanningBtn, 'startPlanningBtn', 'click', () => {
+            console.log('开始规划按钮被点击');
+            this.showAuthModal('register');
+        });
 
         // 导航菜单事件
-        DOM.on(this.elements.homeBtn, 'click', () => this.showSection('welcome'));
-        DOM.on(this.elements.tripsBtn, 'click', () => this.showSection('trips'));
-        DOM.on(this.elements.mapBtn, 'click', () => this.showSection('map'));
-        DOM.on(this.elements.importBtn, 'click', () => this.showSection('import'));
+        bindEvent(this.elements.homeBtn, 'homeBtn', 'click', () => this.showSection('welcome'));
+        bindEvent(this.elements.tripsBtn, 'tripsBtn', 'click', () => this.showSection('trips'));
+        bindEvent(this.elements.mapBtn, 'mapBtn', 'click', () => this.showSection('map'));
+        bindEvent(this.elements.importBtn, 'importBtn', 'click', () => this.showSection('import'));
 
         // 模态框事件
-        DOM.on(this.elements.closeAuthModal, 'click', () => this.hideAuthModal());
-        DOM.on(this.elements.authSwitchBtn, 'click', () => this.switchAuthMode());
+        bindEvent(this.elements.closeAuthModal, 'closeAuthModal', 'click', () => this.hideAuthModal());
+        bindEvent(this.elements.authSwitchBtn, 'authSwitchBtn', 'click', () => this.switchAuthMode());
 
         // 行程管理事件
-        DOM.on(this.elements.addTripBtn, 'click', () => this.showTripModal());
-        DOM.on(this.elements.closeTripModal, 'click', () => this.hideTripModal());
+        bindEvent(this.elements.addTripBtn, 'addTripBtn', 'click', () => this.showTripModal());
+        bindEvent(this.elements.closeTripModal, 'closeTripModal', 'click', () => this.hideTripModal());
 
         // 表单提交事件
-        DOM.on(this.elements.loginForm, 'submit', (e) => this.handleLogin(e));
-        DOM.on(this.elements.registerForm, 'submit', (e) => this.handleRegister(e));
-        DOM.on(this.elements.tripForm, 'submit', (e) => this.handleTripSubmit(e));
+        bindEvent(this.elements.loginForm, 'loginForm', 'submit', (e) => this.handleLogin(e));
+        bindEvent(this.elements.registerForm, 'registerForm', 'submit', (e) => this.handleRegister(e));
+        bindEvent(this.elements.tripForm, 'tripForm', 'submit', (e) => this.handleTripSubmit(e));
 
         // 认证事件监听
         if (typeof auth !== 'undefined') {
@@ -183,7 +235,31 @@ class TravelPlannerApp {
             auth.on('logout', () => this.onUserLogout());
         }
 
+        // 额外的直接事件绑定（备用方案）
+        this.bindDirectEvents();
+
         console.log('事件监听器绑定完成');
+    }
+
+    /**
+     * 直接绑定事件（备用方案）
+     */
+    bindDirectEvents() {
+        // 直接通过ID查找并绑定事件
+        const directBindings = [
+            { id: 'loginBtn', handler: () => this.showAuthModal('login') },
+            { id: 'registerBtn', handler: () => this.showAuthModal('register') },
+            { id: 'startPlanningBtn', handler: () => this.showAuthModal('register') },
+            { id: 'logoutBtn', handler: () => this.logout() }
+        ];
+
+        directBindings.forEach(({ id, handler }) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('click', handler);
+                console.log(`✓ 直接绑定成功: ${id}`);
+            }
+        });
     }
 
     /**
@@ -250,22 +326,54 @@ class TravelPlannerApp {
      * 显示认证模态框
      */
     showAuthModal(mode = 'login') {
-        if (!this.elements.authModal) return;
+        console.log(`显示认证模态框: ${mode}`);
 
-        Modal.show('authModal');
+        const authModal = this.elements.authModal || DOM.query('#authModal');
+        if (!authModal) {
+            console.error('找不到认证模态框元素 #authModal');
+            // 创建简单的提示
+            alert(`${mode === 'login' ? '登录' : '注册'}功能正在开发中...`);
+            return;
+        }
 
-        if (mode === 'login') {
-            DOM.show(this.elements.loginForm);
-            DOM.hide(this.elements.registerForm);
-            DOM.setContent(DOM.query('#authModalTitle'), '登录');
-            DOM.setContent(DOM.query('#authSwitchText'), '还没有账号？');
-            DOM.setContent(this.elements.authSwitchBtn, '立即注册');
-        } else {
-            DOM.hide(this.elements.loginForm);
-            DOM.show(this.elements.registerForm);
-            DOM.setContent(DOM.query('#authModalTitle'), '注册');
-            DOM.setContent(DOM.query('#authSwitchText'), '已有账号？');
-            DOM.setContent(this.elements.authSwitchBtn, '立即登录');
+        // 使用多种方式尝试显示模态框
+        try {
+            // 方式1：使用Modal工具
+            if (typeof Modal !== 'undefined') {
+                Modal.show('authModal');
+            } else {
+                // 方式2：直接操作DOM
+                authModal.style.display = 'flex';
+                authModal.classList.add('show');
+                authModal.classList.remove('hidden');
+            }
+
+            // 更新模态框内容
+            const loginForm = this.elements.loginForm || DOM.query('#loginForm');
+            const registerForm = this.elements.registerForm || DOM.query('#registerForm');
+            const modalTitle = DOM.query('#authModalTitle');
+            const switchText = DOM.query('#authSwitchText');
+            const switchBtn = this.elements.authSwitchBtn || DOM.query('#authSwitchBtn');
+
+            if (mode === 'login') {
+                if (loginForm) loginForm.classList.remove('hidden');
+                if (registerForm) registerForm.classList.add('hidden');
+                if (modalTitle) modalTitle.textContent = '登录';
+                if (switchText) switchText.textContent = '还没有账号？';
+                if (switchBtn) switchBtn.textContent = '立即注册';
+            } else {
+                if (loginForm) loginForm.classList.add('hidden');
+                if (registerForm) registerForm.classList.remove('hidden');
+                if (modalTitle) modalTitle.textContent = '注册';
+                if (switchText) switchText.textContent = '已有账号？';
+                if (switchBtn) switchBtn.textContent = '立即登录';
+            }
+
+            console.log('认证模态框显示成功');
+        } catch (error) {
+            console.error('显示模态框失败:', error);
+            // 备用方案：使用alert
+            alert(`${mode === 'login' ? '登录' : '注册'}功能正在开发中...`);
         }
     }
 
@@ -273,7 +381,21 @@ class TravelPlannerApp {
      * 隐藏认证模态框
      */
     hideAuthModal() {
-        Modal.hide('authModal');
+        console.log('隐藏认证模态框');
+
+        const authModal = this.elements.authModal || DOM.query('#authModal');
+        if (authModal) {
+            // 使用多种方式尝试隐藏模态框
+            if (typeof Modal !== 'undefined') {
+                Modal.hide('authModal');
+            } else {
+                // 直接操作DOM
+                authModal.style.display = 'none';
+                authModal.classList.remove('show');
+                authModal.classList.add('hidden');
+            }
+            console.log('认证模态框隐藏成功');
+        }
     }
 
     /**

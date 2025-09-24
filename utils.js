@@ -308,11 +308,20 @@ const Modal = {
      * @param {string} modalId - 模态框ID
      */
     show(modalId) {
+        console.log(`显示模态框: ${modalId}`);
         const modal = DOM.query(`#${modalId}`);
         if (modal) {
-            DOM.show(modal);
+            // 移除hidden类，添加show类
+            modal.classList.remove('hidden');
+            modal.classList.add('show');
+            modal.style.display = 'flex';
+
             // 阻止背景滚动
             document.body.style.overflow = 'hidden';
+
+            console.log(`模态框 ${modalId} 显示成功`);
+        } else {
+            console.error(`找不到模态框元素: #${modalId}`);
         }
     },
 
@@ -321,11 +330,36 @@ const Modal = {
      * @param {string} modalId - 模态框ID
      */
     hide(modalId) {
+        console.log(`隐藏模态框: ${modalId}`);
         const modal = DOM.query(`#${modalId}`);
         if (modal) {
-            DOM.hide(modal);
+            // 添加hidden类，移除show类
+            modal.classList.add('hidden');
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+
             // 恢复背景滚动
             document.body.style.overflow = '';
+
+            console.log(`模态框 ${modalId} 隐藏成功`);
+        } else {
+            console.error(`找不到模态框元素: #${modalId}`);
+        }
+    },
+
+    /**
+     * 切换模态框显示状态
+     * @param {string} modalId - 模态框ID
+     */
+    toggle(modalId) {
+        const modal = DOM.query(`#${modalId}`);
+        if (modal) {
+            const isVisible = modal.classList.contains('show');
+            if (isVisible) {
+                this.hide(modalId);
+            } else {
+                this.show(modalId);
+            }
         }
     }
 };

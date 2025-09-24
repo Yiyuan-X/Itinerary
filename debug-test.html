@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>功能测试页面</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            margin: 20px 0;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        .btn-outline {
+            background: transparent;
+            color: #3b82f6;
+            border: 2px solid #3b82f6;
+        }
+        .btn-outline:hover {
+            background: #3b82f6;
+            color: white;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 6px;
+        }
+        .status.success { background: #dcfce7; color: #166534; }
+        .status.error { background: #fecaca; color: #dc2626; }
+        .status.info { background: #dbeafe; color: #1d4ed8; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>智能旅行规划器 - 功能测试</h1>
+
+        <div class="test-section">
+            <h2>按钮功能测试</h2>
+            <button id="testLoginBtn" class="btn btn-outline">测试登录按钮</button>
+            <button id="testRegisterBtn" class="btn btn-primary">测试注册按钮</button>
+            <button id="testPlanningBtn" class="btn btn-primary">测试开始规划按钮</button>
+
+            <div id="test-results">
+                <!-- 测试结果 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 测试模态框 -->
+    <div id="testModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" id="closeModal">×</button>
+            <h3>测试模态框</h3>
+            <form id="testForm">
+                <div class="form-group">
+                    <label>邮箱:</label>
+                    <input type="email" id="testEmail" placeholder="输入邮箱">
+                </div>
+                <div class="form-group">
+                    <label>密码:</label>
+                    <input type="password" id="testPassword" placeholder="输入密码">
+                </div>
+                <button type="submit" class="btn btn-primary">提交测试</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 测试JavaScript功能
+        console.log('测试页面JavaScript开始加载...');
+
+        // 测试结果显示函数
+        function showResult(message, type = 'info') {
+            const results = document.getElementById('test-results');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            results.appendChild(div);
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // 模态框控制
+        function showModal() {
+            const modal = document.getElementById('testModal');
+            modal.classList.add('show');
+            showResult('模态框显示成功', 'success');
+        }
+
+        function hideModal() {
+            const modal = document.getElementById('testModal');
+            modal.classList.remove('show');
+            showResult('模态框隐藏成功', 'success');
+        }
+
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM加载完成，开始初始化测试...');
+
+            try {
+                // 测试按钮事件绑定
+                const loginBtn = document.getElementById('testLoginBtn');
+                const registerBtn = document.getElementById('testRegisterBtn');
+                const planningBtn = document.getElementById('testPlanningBtn');
+                const closeBtn = document.getElementById('closeModal');
+                const form = document.getElementById('testForm');
+
+                if (!loginBtn || !registerBtn || !planningBtn) {
+                    showResult('错误：找不到测试按钮元素', 'error');
+                    return;
+                }
+
+                // 绑定登录按钮
+                loginBtn.addEventListener('click', function() {
+                    console.log('登录按钮被点击');
+                    showResult('登录按钮点击成功！', 'success');
+                    showModal();
+                });
+
+                // 绑定注册按钮
+                registerBtn.addEventListener('click', function() {
+                    console.log('注册按钮被点击');
+                    showResult('注册按钮点击成功！', 'success');
+                    showModal();
+                });
+
+                // 绑定开始规划按钮
+                planningBtn.addEventListener('click', function() {
+                    console.log('开始规划按钮被点击');
+                    showResult('开始规划按钮点击成功！', 'success');
+                    showModal();
+                });
+
+                // 绑定关闭按钮
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', function() {
+                        console.log('关闭按钮被点击');
+                        hideModal();
+                    });
+                }
+
+                // 绑定表单提交
+                if (form) {
+                    form.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        console.log('表单提交');
+                        const email = document.getElementById('testEmail').value;
+                        const password = document.getElementById('testPassword').value;
+                        showResult(`表单提交成功！邮箱: ${email}`, 'success');
+                        hideModal();
+                    });
+                }
+
+                // 点击模态框背景关闭
+                document.getElementById('testModal').addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        hideModal();
+                    }
+                });
+
+                showResult('所有事件绑定完成！', 'success');
+
+            } catch (error) {
+                console.error('初始化错误:', error);
+                showResult(`初始化错误: ${error.message}`, 'error');
+            }
+        });
+
+        // 全局错误捕获
+        window.addEventListener('error', function(e) {
+            console.error('全局错误:', e.error);
+            showResult(`JavaScript错误: ${e.error.message}`, 'error');
+        });
+
+        console.log('测试页面JavaScript加载完成');
+    </script>
+</body>
+</html>

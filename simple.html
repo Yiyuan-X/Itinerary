@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简化版智能旅行规划器</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <style>
+        /* 额外的调试样式 */
+        .debug-info {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1f2937;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            max-width: 300px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 3000;
+        }
+        .debug-log {
+            margin: 2px 0;
+        }
+        .debug-log.success { color: #10b981; }
+        .debug-log.error { color: #ef4444; }
+        .debug-log.warn { color: #f59e0b; }
+    </style>
+</head>
+<body>
+    <!-- 调试信息面板 -->
+    <div id="debugInfo" class="debug-info">
+        <strong>调试信息:</strong>
+        <div id="debugLogs"></div>
+    </div>
+
+    <!-- 全局加载指示器 -->
+    <div id="globalLoader" class="loader-overlay">
+        <div class="loader-content">
+            <div class="spinner"></div>
+            <p>加载中...</p>
+        </div>
+    </div>
+
+    <!-- 主应用容器 -->
+    <div id="app" class="app-container">
+        <!-- 头部导航栏 -->
+        <header id="mainHeader" class="main-header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <img src="assets/logo.svg" alt="智能行程规划器" class="logo">
+                    <h1 class="app-title">智能行程规划器</h1>
+                </div>
+
+                <!-- 未登录状态的导航 -->
+                <nav id="guestNav" class="nav-guest">
+                    <button id="loginBtn" class="btn btn-outline">登录</button>
+                    <button id="registerBtn" class="btn btn-primary">注册</button>
+                </nav>
+            </div>
+        </header>
+
+        <!-- 主要内容区域 -->
+        <main id="mainContent" class="main-content">
+            <!-- 欢迎页面 -->
+            <section id="welcomeSection" class="welcome-section">
+                <div class="welcome-content">
+                    <div class="welcome-hero">
+                        <h2>智能行程规划，让旅行更简单</h2>
+                        <p>自动导入票务信息，智能路线规划，实时天气提醒</p>
+                        <div class="welcome-actions">
+                            <button class="btn btn-primary btn-large" id="startPlanningBtn">开始规划</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- 认证模态框 -->
+    <div id="authModal" class="modal hidden">
+        <div class="modal-content auth-modal">
+            <div class="modal-header">
+                <h2 id="authModalTitle">登录</h2>
+                <button class="btn-close" id="closeAuthModal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="auth-content">
+                    <p>这是一个演示模态框。实际功能正在开发中...</p>
+                    <p>点击背景或关闭按钮可以关闭此窗口。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast通知 -->
+    <div id="toast" class="toast hidden">
+        <div class="toast-message"></div>
+    </div>
+
+    <!-- JavaScript 文件 -->
+    <script>
+        // 调试日志系统
+        const debugLogs = [];
+        const debugContainer = document.getElementById('debugLogs');
+
+        function debugLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            debugLogs.push({ message: logEntry, type });
+
+            console.log(logEntry);
+
+            if (debugContainer) {
+                const logDiv = document.createElement('div');
+                logDiv.className = `debug-log ${type}`;
+                logDiv.textContent = logEntry;
+                debugContainer.appendChild(logDiv);
+                debugContainer.scrollTop = debugContainer.scrollHeight;
+            }
+        }
+
+        // 简化的工具函数
+        function showModal() {
+            debugLog('尝试显示模态框', 'info');
+            const modal = document.getElementById('authModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                modal.classList.remove('hidden');
+                modal.classList.add('show');
+                debugLog('模态框显示成功', 'success');
+            } else {
+                debugLog('找不到模态框元素', 'error');
+            }
+        }
+
+        function hideModal() {
+            debugLog('尝试隐藏模态框', 'info');
+            const modal = document.getElementById('authModal');
+            if (modal) {
+                modal.style.display = 'none';
+                modal.classList.add('hidden');
+                modal.classList.remove('show');
+                debugLog('模态框隐藏成功', 'success');
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            debugLog(`显示Toast: ${message}`, 'info');
+            const toast = document.getElementById('toast');
+            const messageEl = toast?.querySelector('.toast-message');
+
+            if (toast && messageEl) {
+                messageEl.textContent = message;
+                toast.classList.remove('hidden');
+                toast.classList.add('show', type);
+
+                setTimeout(() => {
+                    toast.classList.add('hidden');
+                    toast.classList.remove('show', type);
+                }, 3000);
+
+                debugLog('Toast显示成功', 'success');
+            } else {
+                debugLog('Toast元素未找到', 'error');
+            }
+        }
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            debugLog('DOM加载完成，开始初始化', 'info');
+
+            try {
+                // 隐藏全局加载器
+                const globalLoader = document.getElementById('globalLoader');
+                if (globalLoader) {
+                    globalLoader.style.display = 'none';
+                    debugLog('全局加载器隐藏成功', 'success');
+                }
+
+                // 获取按钮元素
+                const loginBtn = document.getElementById('loginBtn');
+                const registerBtn = document.getElementById('registerBtn');
+                const startPlanningBtn = document.getElementById('startPlanningBtn');
+                const closeBtn = document.getElementById('closeAuthModal');
+
+                // 检查元素是否存在
+                debugLog(`登录按钮: ${loginBtn ? '找到' : '未找到'}`, loginBtn ? 'success' : 'error');
+                debugLog(`注册按钮: ${registerBtn ? '找到' : '未找到'}`, registerBtn ? 'success' : 'error');
+                debugLog(`开始规划按钮: ${startPlanningBtn ? '找到' : '未找到'}`, startPlanningBtn ? 'success' : 'error');
+                debugLog(`关闭按钮: ${closeBtn ? '找到' : '未找到'}`, closeBtn ? 'success' : 'error');
+
+                // 绑定登录按钮
+                if (loginBtn) {
+                    loginBtn.addEventListener('click', function() {
+                        debugLog('登录按钮被点击', 'info');
+                        showModal();
+                        showToast('登录功能演示');
+                    });
+                    debugLog('登录按钮事件绑定成功', 'success');
+                }
+
+                // 绑定注册按钮
+                if (registerBtn) {
+                    registerBtn.addEventListener('click', function() {
+                        debugLog('注册按钮被点击', 'info');
+                        showModal();
+                        showToast('注册功能演示');
+                    });
+                    debugLog('注册按钮事件绑定成功', 'success');
+                }
+
+                // 绑定开始规划按钮
+                if (startPlanningBtn) {
+                    startPlanningBtn.addEventListener('click', function() {
+                        debugLog('开始规划按钮被点击', 'info');
+                        showModal();
+                        showToast('开始规划功能演示');
+                    });
+                    debugLog('开始规划按钮事件绑定成功', 'success');
+                }
+
+                // 绑定关闭按钮
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', function() {
+                        debugLog('关闭按钮被点击', 'info');
+                        hideModal();
+                    });
+                    debugLog('关闭按钮事件绑定成功', 'success');
+                }
+
+                // 点击背景关闭模态框
+                const modal = document.getElementById('authModal');
+                if (modal) {
+                    modal.addEventListener('click', function(e) {
+                        if (e.target === modal) {
+                            debugLog('点击背景关闭模态框', 'info');
+                            hideModal();
+                        }
+                    });
+                    debugLog('背景点击事件绑定成功', 'success');
+                }
+
+                debugLog('所有事件绑定完成', 'success');
+                showToast('应用初始化成功！');
+
+            } catch (error) {
+                debugLog(`初始化错误: ${error.message}`, 'error');
+                console.error('初始化错误:', error);
+            }
+        });
+
+        // 全局错误处理
+        window.addEventListener('error', function(e) {
+            debugLog(`全局错误: ${e.error.message}`, 'error');
+        });
+
+        debugLog('JavaScript加载完成', 'info');
+    </script>
+</body>
+</html>
