@@ -23,6 +23,8 @@ class TravelPlannerApp {
      */
     async init() {
         try {
+            console.log('开始初始化应用程序...');
+
             // 显示加载指示器
             Loading.show();
 
@@ -32,11 +34,29 @@ class TravelPlannerApp {
             // 绑定事件监听器
             this.bindEvents();
 
-            // 初始化地图
-            await amap.initMap('map');
+            // 检查高德地图API是否加载
+            if (typeof AMap !== 'undefined') {
+                try {
+                    // 初始化地图服务管理器
+                    if (typeof AmapManager !== 'undefined') {
+                        this.amap = new AmapManager();
+                        console.log('地图服务初始化成功');
+                    }
+                } catch (mapError) {
+                    console.warn('地图初始化失败:', mapError);
+                }
+            } else {
+                console.warn('高德地图API未加载，跳过地图初始化');
+            }
 
-            // 加载旅行计划数据
-            this.loadTrips();
+            // 检查认证状态
+            if (typeof auth !== 'undefined' && auth.isAuthenticated) {
+                // 加载用户数据
+                await this.loadUserData();
+            } else {
+                // 显示欢迎页面
+                this.showWelcomePage();
+            }
 
             // 隐藏加载指示器
             Loading.hide();
@@ -56,622 +76,516 @@ class TravelPlannerApp {
      */
     cacheElements() {
         this.elements = {
+            // 主要容器
+            app: DOM.query('#app'),
+            welcomeSection: DOM.query('#welcomeSection'),
+            tripsSection: DOM.query('#tripsSection'),
+            mapSection: DOM.query('#mapSection'),
+            importSection: DOM.query('#importSection'),
+
+            // 导航元素
+            guestNav: DOM.query('#guestNav'),
+            userNav: DOM.query('#userNav'),
+            homeBtn: DOM.query('#homeBtn'),
+            tripsBtn: DOM.query('#tripsBtn'),
+            mapBtn: DOM.query('#mapBtn'),
+            importBtn: DOM.query('#importBtn'),
+
             // 按钮
+            loginBtn: DOM.query('#loginBtn'),
+            registerBtn: DOM.query('#registerBtn'),
+            logoutBtn: DOM.query('#logoutBtn'),
+            startPlanningBtn: DOM.query('#startPlanningBtn'),
             addTripBtn: DOM.query('#addTripBtn'),
-            locateBtn: DOM.query('#locateBtn'),
-            refreshMapBtn: DOM.query('#refreshMapBtn'),
-            modalClose: DOM.query('#modalClose'),
-            confirmModalClose: DOM.query('#confirmModalClose'),
-            cancelBtn: DOM.query('#cancelBtn'),
-            saveBtn: DOM.query('#saveBtn'),
-            confirmCancelBtn: DOM.query('#confirmCancelBtn'),
-            confirmDeleteBtn: DOM.query('#confirmDeleteBtn'),
 
-            // 表单元素
-            tripForm: DOM.query('#tripForm'),
-            tripTitle: DOM.query('#tripTitle'),
-            tripDestination: DOM.query('#tripDestination'),
-            startDate: DOM.query('#startDate'),
-            endDate: DOM.query('#endDate'),
-            tripDescription: DOM.query('#tripDescription'),
-            tripStatus: DOM.query('#tripStatus'),
+            // 表单相关
+            authModal: DOM.query('#authModal'),
+            loginForm: DOM.query('#loginForm'),
+            registerForm: DOM.query('#registerForm'),
+            authSwitchBtn: DOM.query('#authSwitchBtn'),
+            closeAuthModal: DOM.query('#closeAuthModal'),
 
-            // 容器和列表
-            tripsContainer: DOM.query('#tripsContainer'),
-            emptyState: DOM.query('#emptyState'),
-            locationSuggestions: DOM.query('#locationSuggestions'),
-            statusFilter: DOM.query('#statusFilter'),
-
-            // 模态框
+            // 行程相关
             tripModal: DOM.query('#tripModal'),
-            confirmModal: DOM.query('#confirmModal'),
-            modalTitle: DOM.query('#modalTitle')
+            tripForm: DOM.query('#tripForm'),
+            closeTripModal: DOM.query('#closeTripModal'),
+            tripsGrid: DOM.query('#tripsGrid'),
+            emptyTripsState: DOM.query('#emptyTripsState'),
+
+            // 地图相关
+            mainMap: DOM.query('#mainMap')
         };
+
+        // 记录找到和未找到的元素
+        const foundElements = [];
+        const missingElements = [];
+
+        Object.entries(this.elements).forEach(([key, element]) => {
+            if (element) {
+                foundElements.push(key);
+            } else {
+                missingElements.push(key);
+            }
+        });
+
+        console.log('找到的DOM元素:', foundElements);
+        if (missingElements.length > 0) {
+            console.warn('未找到的DOM元素:', missingElements);
+        }
     }
 
     /**
      * 绑定事件监听器
      */
     bindEvents() {
-        // 添加旅行计划按钮
-        DOM.on(this.elements.addTripBtn, 'click', () => this.showAddTripModal());
+        // 导航事件
+        DOM.on(this.elements.loginBtn, 'click', () => this.showAuthModal('login'));
+        DOM.on(this.elements.registerBtn, 'click', () => this.showAuthModal('register'));
+        DOM.on(this.elements.logoutBtn, 'click', () => this.logout());
+        DOM.on(this.elements.startPlanningBtn, 'click', () => this.showAuthModal('register'));
 
-        // 定位按钮
-        DOM.on(this.elements.locateBtn, 'click', () => this.getCurrentLocation());
+        // 导航菜单事件
+        DOM.on(this.elements.homeBtn, 'click', () => this.showSection('welcome'));
+        DOM.on(this.elements.tripsBtn, 'click', () => this.showSection('trips'));
+        DOM.on(this.elements.mapBtn, 'click', () => this.showSection('map'));
+        DOM.on(this.elements.importBtn, 'click', () => this.showSection('import'));
 
-        // 刷新地图按钮
-        DOM.on(this.elements.refreshMapBtn, 'click', () => amap.refresh());
+        // 模态框事件
+        DOM.on(this.elements.closeAuthModal, 'click', () => this.hideAuthModal());
+        DOM.on(this.elements.authSwitchBtn, 'click', () => this.switchAuthMode());
 
-        // 模态框关闭按钮
-        DOM.on(this.elements.modalClose, 'click', () => this.hideModal('tripModal'));
-        DOM.on(this.elements.confirmModalClose, 'click', () => this.hideModal('confirmModal'));
-        DOM.on(this.elements.cancelBtn, 'click', () => this.hideModal('tripModal'));
-        DOM.on(this.elements.confirmCancelBtn, 'click', () => this.hideModal('confirmModal'));
+        // 行程管理事件
+        DOM.on(this.elements.addTripBtn, 'click', () => this.showTripModal());
+        DOM.on(this.elements.closeTripModal, 'click', () => this.hideTripModal());
 
-        // 表单提交
-        DOM.on(this.elements.tripForm, 'submit', (e) => this.handleFormSubmit(e));
+        // 表单提交事件
+        DOM.on(this.elements.loginForm, 'submit', (e) => this.handleLogin(e));
+        DOM.on(this.elements.registerForm, 'submit', (e) => this.handleRegister(e));
+        DOM.on(this.elements.tripForm, 'submit', (e) => this.handleTripSubmit(e));
 
-        // 状态筛选
-        DOM.on(this.elements.statusFilter, 'change', (e) => this.handleFilterChange(e));
+        // 认证事件监听
+        if (typeof auth !== 'undefined') {
+            auth.on('authenticated', (user) => this.onUserAuthenticated(user));
+            auth.on('logout', () => this.onUserLogout());
+        }
 
-        // 目的地输入建议
-        DOM.on(this.elements.tripDestination, 'input',
-            debounce((e) => this.handleDestinationInput(e), 300)
-        );
-
-        // 隐藏建议列表
-        DOM.on(document, 'click', (e) => {
-            if (!this.elements.tripDestination.contains(e.target) &&
-                !this.elements.locationSuggestions.contains(e.target)) {
-                this.hideSuggestions();
-            }
-        });
-
-        // 模态框背景点击关闭
-        DOM.on(this.elements.tripModal, 'click', (e) => {
-            if (e.target === this.elements.tripModal) {
-                this.hideModal('tripModal');
-            }
-        });
-
-        DOM.on(this.elements.confirmModal, 'click', (e) => {
-            if (e.target === this.elements.confirmModal) {
-                this.hideModal('confirmModal');
-            }
-        });
-
-        // 确认删除
-        DOM.on(this.elements.confirmDeleteBtn, 'click', () => this.confirmDelete());
-
-        // 键盘事件
-        DOM.on(document, 'keydown', (e) => this.handleKeyboardEvents(e));
+        console.log('事件监听器绑定完成');
     }
 
     /**
-     * 处理键盘事件
-     * @param {KeyboardEvent} e - 键盘事件
+     * 显示欢迎页面
      */
-    handleKeyboardEvents(e) {
-        // ESC键关闭模态框
-        if (e.key === 'Escape') {
-            if (this.elements.tripModal.classList.contains('show')) {
-                this.hideModal('tripModal');
-            } else if (this.elements.confirmModal.classList.contains('show')) {
-                this.hideModal('confirmModal');
-            }
+    showWelcomePage() {
+        this.hideAllSections();
+        DOM.show(this.elements.welcomeSection);
+        DOM.hide(this.elements.userNav);
+        DOM.show(this.elements.guestNav);
+    }
+
+    /**
+     * 显示指定页面
+     */
+    showSection(sectionName) {
+        this.hideAllSections();
+
+        // 更新导航状态
+        this.updateNavigation(sectionName);
+
+        switch (sectionName) {
+            case 'welcome':
+                DOM.show(this.elements.welcomeSection);
+                break;
+            case 'trips':
+                DOM.show(this.elements.tripsSection);
+                this.loadTrips();
+                break;
+            case 'map':
+                DOM.show(this.elements.mapSection);
+                this.initializeMap();
+                break;
+            case 'import':
+                DOM.show(this.elements.importSection);
+                break;
         }
     }
 
     /**
-     * 加载旅行计划数据
+     * 隐藏所有页面
      */
-    loadTrips() {
-        try {
-            this.currentTrips = storage.getAllTrips();
-            this.renderTrips();
-            amap.showTripsOnMap(this.currentTrips);
-        } catch (error) {
-            console.error('加载旅行计划失败:', error);
-            Toast.error('加载旅行计划失败');
+    hideAllSections() {
+        DOM.hide(this.elements.welcomeSection);
+        DOM.hide(this.elements.tripsSection);
+        DOM.hide(this.elements.mapSection);
+        DOM.hide(this.elements.importSection);
+    }
+
+    /**
+     * 更新导航状态
+     */
+    updateNavigation(activeSection) {
+        const navItems = DOM.queryAll('.nav-item');
+        navItems.forEach(item => DOM.removeClass(item, 'active'));
+
+        const activeNavItem = DOM.query(`#${activeSection}Btn`);
+        if (activeNavItem) {
+            DOM.addClass(activeNavItem, 'active');
         }
     }
 
     /**
-     * 渲染旅行计划列表
+     * 显示认证模态框
      */
-    renderTrips() {
-        const filteredTrips = this.getFilteredTrips();
+    showAuthModal(mode = 'login') {
+        if (!this.elements.authModal) return;
 
-        if (filteredTrips.length === 0) {
-            this.showEmptyState();
+        Modal.show('authModal');
+
+        if (mode === 'login') {
+            DOM.show(this.elements.loginForm);
+            DOM.hide(this.elements.registerForm);
+            DOM.setContent(DOM.query('#authModalTitle'), '登录');
+            DOM.setContent(DOM.query('#authSwitchText'), '还没有账号？');
+            DOM.setContent(this.elements.authSwitchBtn, '立即注册');
         } else {
-            this.hideEmptyState();
-            this.renderTripCards(filteredTrips);
+            DOM.hide(this.elements.loginForm);
+            DOM.show(this.elements.registerForm);
+            DOM.setContent(DOM.query('#authModalTitle'), '注册');
+            DOM.setContent(DOM.query('#authSwitchText'), '已有账号？');
+            DOM.setContent(this.elements.authSwitchBtn, '立即登录');
         }
     }
 
     /**
-     * 获取筛选后的旅行计划
-     * @returns {Array} 筛选后的旅行计划数组
+     * 隐藏认证模态框
      */
-    getFilteredTrips() {
-        return storage.getTripsByStatus(this.currentFilter);
+    hideAuthModal() {
+        Modal.hide('authModal');
     }
 
     /**
-     * 渲染旅行计划卡片
-     * @param {Array} trips - 旅行计划数组
+     * 切换认证模式
      */
-    renderTripCards(trips) {
-        const container = this.elements.tripsContainer;
-
-        // 清空容器
-        DOM.setContent(container, '');
-
-        // 生成卡片HTML
-        trips.forEach(trip => {
-            const cardElement = this.createTripCard(trip);
-            container.appendChild(cardElement);
-        });
+    switchAuthMode() {
+        const isLoginVisible = !DOM.query('#loginForm').classList.contains('hidden');
+        this.showAuthModal(isLoginVisible ? 'register' : 'login');
     }
 
     /**
-     * 创建旅行计划卡片元素
-     * @param {object} trip - 旅行计划对象
-     * @returns {HTMLElement} 卡片元素
+     * 处理登录
+     */
+    async handleLogin(event) {
+        event.preventDefault();
+
+        try {
+            const formData = new FormData(event.target);
+            const email = formData.get('email');
+            const password = formData.get('password');
+            const rememberMe = formData.get('rememberMe') === 'on';
+
+            if (typeof auth !== 'undefined') {
+                await auth.login(email, password, rememberMe);
+                this.hideAuthModal();
+                Toast.success('登录成功！');
+            } else {
+                // 模拟登录成功
+                console.log('模拟登录:', { email, password, rememberMe });
+                this.onUserAuthenticated({ email, name: '测试用户' });
+                this.hideAuthModal();
+                Toast.success('登录成功！');
+            }
+        } catch (error) {
+            console.error('登录失败:', error);
+            Toast.error('登录失败，请检查用户名和密码');
+        }
+    }
+
+    /**
+     * 处理注册
+     */
+    async handleRegister(event) {
+        event.preventDefault();
+
+        try {
+            const formData = new FormData(event.target);
+            const userData = {
+                username: formData.get('username'),
+                email: formData.get('email'),
+                password: formData.get('password')
+            };
+
+            if (typeof auth !== 'undefined') {
+                await auth.register(userData);
+                this.hideAuthModal();
+                Toast.success('注册成功！');
+            } else {
+                // 模拟注册成功
+                console.log('模拟注册:', userData);
+                this.onUserAuthenticated({ email: userData.email, name: userData.username });
+                this.hideAuthModal();
+                Toast.success('注册成功！');
+            }
+        } catch (error) {
+            console.error('注册失败:', error);
+            Toast.error('注册失败，请稍后重试');
+        }
+    }
+
+    /**
+     * 用户认证成功处理
+     */
+    onUserAuthenticated(user) {
+        console.log('用户已认证:', user);
+
+        // 切换导航显示
+        DOM.hide(this.elements.guestNav);
+        DOM.show(this.elements.userNav);
+
+        // 显示行程页面
+        this.showSection('trips');
+
+        // 加载用户数据
+        this.loadUserData();
+    }
+
+    /**
+     * 用户登出处理
+     */
+    onUserLogout() {
+        console.log('用户已登出');
+
+        // 切换导航显示
+        DOM.show(this.elements.guestNav);
+        DOM.hide(this.elements.userNav);
+
+        // 显示欢迎页面
+        this.showWelcomePage();
+
+        Toast.success('已退出登录');
+    }
+
+    /**
+     * 登出
+     */
+    async logout() {
+        try {
+            if (typeof auth !== 'undefined') {
+                await auth.logout();
+            } else {
+                // 模拟登出
+                this.onUserLogout();
+            }
+        } catch (error) {
+            console.error('登出失败:', error);
+            Toast.error('登出失败');
+        }
+    }
+
+    /**
+     * 加载用户数据
+     */
+    async loadUserData() {
+        try {
+            // 加载行程数据
+            if (typeof tripManager !== 'undefined') {
+                await tripManager.loadTrips();
+            }
+
+            console.log('用户数据加载完成');
+        } catch (error) {
+            console.error('加载用户数据失败:', error);
+        }
+    }
+
+    /**
+     * 加载行程列表
+     */
+    async loadTrips() {
+        try {
+            if (typeof tripManager !== 'undefined') {
+                const trips = await tripManager.loadTrips();
+                this.renderTrips(trips);
+            } else {
+                // 显示模拟数据
+                this.renderTrips([]);
+            }
+        } catch (error) {
+            console.error('加载行程失败:', error);
+            Toast.error('加载行程失败');
+        }
+    }
+
+    /**
+     * 渲染行程列表
+     */
+    renderTrips(trips) {
+        if (!this.elements.tripsGrid) return;
+
+        if (trips.length === 0) {
+            DOM.show(this.elements.emptyTripsState);
+            DOM.hide(this.elements.tripsGrid);
+        } else {
+            DOM.hide(this.elements.emptyTripsState);
+            DOM.show(this.elements.tripsGrid);
+
+            const tripCards = trips.map(trip => this.createTripCard(trip)).join('');
+            DOM.setContent(this.elements.tripsGrid, tripCards);
+        }
+    }
+
+    /**
+     * 创建行程卡片
      */
     createTripCard(trip) {
-        const card = document.createElement('div');
-        card.className = 'trip-card';
-        card.dataset.tripId = trip.id;
-
-        const days = calculateDaysBetween(trip.startDate, trip.endDate);
-        const statusIcon = getStatusIcon(trip.status);
-        const statusText = getStatusText(trip.status);
-
-        card.innerHTML = `
-            <div class="trip-card-header">
-                <div>
-                    <h3 class="trip-title">${this.escapeHtml(trip.title)}</h3>
-                    <div class="trip-destination">
-                        📍 ${this.escapeHtml(trip.destination)}
-                    </div>
+        return `
+            <div class="trip-card" data-trip-id="${trip.id}">
+                <div class="trip-header">
+                    <h3 class="trip-title">${trip.title}</h3>
+                    <span class="trip-status ${trip.status}">${trip.status}</span>
                 </div>
+                <div class="trip-dates">
+                    ${formatDate(trip.start_date)} - ${formatDate(trip.end_date)}
+                </div>
+                <div class="trip-description">${trip.description || ''}</div>
                 <div class="trip-actions">
-                    <button class="action-btn edit-btn" title="编辑" data-action="edit" data-trip-id="${trip.id}">
-                        ✏️
-                    </button>
-                    <button class="action-btn delete-btn" title="删除" data-action="delete" data-trip-id="${trip.id}">
-                        🗑️
-                    </button>
+                    <button class="btn btn-outline" onclick="app.editTrip(${trip.id})">编辑</button>
+                    <button class="btn btn-primary" onclick="app.viewTrip(${trip.id})">查看</button>
                 </div>
-            </div>
-
-            <div class="trip-dates">
-                📅 ${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}
-                ${days > 0 ? `(${days}天)` : ''}
-            </div>
-
-            ${trip.description ? `
-                <div class="trip-description">
-                    ${this.escapeHtml(trip.description)}
-                </div>
-            ` : ''}
-
-            <div class="trip-status status-${trip.status}">
-                ${statusIcon} ${statusText}
             </div>
         `;
-
-        // 绑定卡片事件
-        this.bindCardEvents(card, trip);
-
-        return card;
     }
 
     /**
-     * 绑定卡片事件
-     * @param {HTMLElement} card - 卡片元素
-     * @param {object} trip - 旅行计划对象
+     * 显示行程模态框
      */
-    bindCardEvents(card, trip) {
-        // 卡片点击事件 - 在地图上显示
-        DOM.on(card, 'click', (e) => {
-            if (!e.target.closest('.trip-actions')) {
-                this.showTripOnMap(trip);
-            }
-        });
+    showTripModal(trip = null) {
+        if (!this.elements.tripModal) return;
 
-        // 编辑按钮
-        const editBtn = card.querySelector('[data-action="edit"]');
-        DOM.on(editBtn, 'click', (e) => {
-            e.stopPropagation();
-            this.showEditTripModal(trip);
-        });
+        Modal.show('tripModal');
 
-        // 删除按钮
-        const deleteBtn = card.querySelector('[data-action="delete"]');
-        DOM.on(deleteBtn, 'click', (e) => {
-            e.stopPropagation();
-            this.showDeleteConfirmModal(trip.id);
-        });
-    }
-
-    /**
-     * 在地图上显示旅行计划
-     * @param {object} trip - 旅行计划对象
-     */
-    showTripOnMap(trip) {
-        if (trip.coordinates) {
-            amap.panTo(trip.coordinates.lng, trip.coordinates.lat);
-            amap.showTripInfo(trip);
+        if (trip) {
+            this.editingTripId = trip.id;
+            DOM.setContent(DOM.query('#tripModalTitle'), '编辑行程');
+            // 填充表单数据
+            this.fillTripForm(trip);
         } else {
-            Toast.error('该旅行计划没有位置信息');
+            this.editingTripId = null;
+            DOM.setContent(DOM.query('#tripModalTitle'), '新建行程');
+            // 清空表单
+            this.clearTripForm();
         }
     }
 
     /**
-     * 显示空状态
+     * 隐藏行程模态框
      */
-    showEmptyState() {
-        DOM.show(this.elements.emptyState);
+    hideTripModal() {
+        Modal.hide('tripModal');
     }
 
     /**
-     * 隐藏空状态
+     * 处理行程表单提交
      */
-    hideEmptyState() {
-        DOM.hide(this.elements.emptyState);
-    }
-
-    /**
-     * 显示添加旅行计划模态框
-     */
-    showAddTripModal() {
-        this.editingTripId = null;
-        DOM.setContent(this.elements.modalTitle, '添加旅行计划');
-        this.resetForm();
-        this.showModal('tripModal');
-    }
-
-    /**
-     * 显示编辑旅行计划模态框
-     * @param {object} trip - 旅行计划对象
-     */
-    showEditTripModal(trip) {
-        this.editingTripId = trip.id;
-        DOM.setContent(this.elements.modalTitle, '编辑旅行计划');
-        this.fillForm(trip);
-        this.showModal('tripModal');
-    }
-
-    /**
-     * 显示删除确认模态框
-     * @param {string} tripId - 旅行计划ID
-     */
-    showDeleteConfirmModal(tripId) {
-        this.deletingTripId = tripId;
-        this.showModal('confirmModal');
-    }
-
-    /**
-     * 显示模态框
-     * @param {string} modalId - 模态框ID
-     */
-    showModal(modalId) {
-        Modal.show(modalId);
-    }
-
-    /**
-     * 隐藏模态框
-     * @param {string} modalId - 模态框ID
-     */
-    hideModal(modalId) {
-        Modal.hide(modalId);
-        if (modalId === 'tripModal') {
-            this.hideSuggestions();
-        }
-    }
-
-    /**
-     * 重置表单
-     */
-    resetForm() {
-        this.elements.tripForm.reset();
-
-        // 设置默认日期为今天
-        const today = new Date().toISOString().split('T')[0];
-        this.elements.startDate.value = today;
-
-        // 结束日期默认为明天
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        this.elements.endDate.value = tomorrow.toISOString().split('T')[0];
-    }
-
-    /**
-     * 填充表单
-     * @param {object} trip - 旅行计划对象
-     */
-    fillForm(trip) {
-        this.elements.tripTitle.value = trip.title || '';
-        this.elements.tripDestination.value = trip.destination || '';
-        this.elements.startDate.value = trip.startDate || '';
-        this.elements.endDate.value = trip.endDate || '';
-        this.elements.tripDescription.value = trip.description || '';
-        this.elements.tripStatus.value = trip.status || 'planning';
-    }
-
-    /**
-     * 处理表单提交
-     * @param {Event} e - 提交事件
-     */
-    async handleFormSubmit(e) {
-        e.preventDefault();
+    async handleTripSubmit(event) {
+        event.preventDefault();
 
         try {
-            // 收集表单数据
-            const formData = this.collectFormData();
+            const formData = new FormData(event.target);
+            const tripData = {
+                title: formData.get('title'),
+                description: formData.get('description'),
+                start_date: formData.get('start_date'),
+                end_date: formData.get('end_date'),
+                status: formData.get('status') || 'planning'
+            };
 
-            // 验证表单
-            const validation = this.validateTripForm(formData);
-            if (!validation.isValid) {
-                this.showValidationErrors(validation.errors);
+            if (typeof tripManager !== 'undefined') {
+                if (this.editingTripId) {
+                    await tripManager.updateTrip(this.editingTripId, tripData);
+                    Toast.success('行程更新成功！');
+                } else {
+                    await tripManager.createTrip(tripData);
+                    Toast.success('行程创建成功！');
+                }
+            } else {
+                console.log('模拟行程操作:', tripData);
+                Toast.success(this.editingTripId ? '行程更新成功！' : '行程创建成功！');
+            }
+
+            this.hideTripModal();
+            this.loadTrips();
+        } catch (error) {
+            console.error('行程操作失败:', error);
+            Toast.error('操作失败，请稍后重试');
+        }
+    }
+
+    /**
+     * 填充行程表单
+     */
+    fillTripForm(trip) {
+        if (!this.elements.tripForm) return;
+
+        const form = this.elements.tripForm;
+        const titleInput = DOM.query('#tripTitle', form);
+        const descInput = DOM.query('#tripDescription', form);
+        const startDateInput = DOM.query('#tripStartDate', form);
+        const endDateInput = DOM.query('#tripEndDate', form);
+
+        if (titleInput) titleInput.value = trip.title || '';
+        if (descInput) descInput.value = trip.description || '';
+        if (startDateInput) startDateInput.value = trip.start_date || '';
+        if (endDateInput) endDateInput.value = trip.end_date || '';
+    }
+
+    /**
+     * 清空行程表单
+     */
+    clearTripForm() {
+        if (!this.elements.tripForm) return;
+        this.elements.tripForm.reset();
+    }
+
+    /**
+     * 初始化地图
+     */
+    async initializeMap() {
+        try {
+            if (!this.elements.mainMap) {
+                console.warn('地图容器不存在');
                 return;
             }
 
-            // 显示加载状态
-            Loading.show();
-
-            // 获取位置坐标
-            const coordinates = await this.getLocationCoordinates(formData.destination);
-
-            // 准备旅行数据
-            const tripData = {
-                ...formData,
-                coordinates
-            };
-
-            // 保存或更新旅行计划
-            let result;
-            if (this.editingTripId) {
-                result = storage.updateTrip(this.editingTripId, tripData);
-                if (result) {
-                    Toast.success('旅行计划更新成功');
-                }
-            } else {
-                result = storage.addTrip(tripData);
-                if (result) {
-                    Toast.success('旅行计划添加成功');
-                }
+            if (this.amap && !this.amap.isInitialized) {
+                await this.amap.initMap('mainMap');
+                console.log('地图初始化成功');
             }
-
-            if (result) {
-                // 关闭模态框
-                this.hideModal('tripModal');
-
-                // 重新加载数据
-                this.loadTrips();
-            }
-
         } catch (error) {
-            console.error('保存旅行计划失败:', error);
-            Toast.error('保存失败: ' + error.message);
-        } finally {
-            Loading.hide();
+            console.error('地图初始化失败:', error);
+            Toast.error('地图加载失败');
         }
     }
 
     /**
-     * 收集表单数据
-     * @returns {object} 表单数据对象
+     * 编辑行程
      */
-    collectFormData() {
-        return {
-            title: this.elements.tripTitle.value.trim(),
-            destination: this.elements.tripDestination.value.trim(),
-            startDate: this.elements.startDate.value,
-            endDate: this.elements.endDate.value,
-            description: this.elements.tripDescription.value.trim(),
-            status: this.elements.tripStatus.value
-        };
+    editTrip(tripId) {
+        console.log('编辑行程:', tripId);
+        // TODO: 实现编辑逻辑
     }
 
     /**
-     * 验证旅行表单
-     * @param {object} formData - 表单数据
-     * @returns {object} 验证结果
+     * 查看行程
      */
-    validateTripForm(formData) {
-        const rules = {
-            title: {
-                required: true,
-                minLength: 2,
-                requiredMessage: '请输入旅行标题',
-                minLengthMessage: '标题至少需要2个字符'
-            },
-            destination: {
-                required: true,
-                minLength: 2,
-                requiredMessage: '请输入目的地',
-                minLengthMessage: '目的地至少需要2个字符'
-            },
-            startDate: {
-                required: true,
-                isDate: true,
-                requiredMessage: '请选择开始日期'
-            },
-            endDate: {
-                required: true,
-                isDate: true,
-                requiredMessage: '请选择结束日期',
-                validator: (value) => {
-                    if (value && formData.startDate && new Date(value) < new Date(formData.startDate)) {
-                        return '结束日期不能早于开始日期';
-                    }
-                    return true;
-                }
-            }
-        };
-
-        return validateForm(formData, rules);
-    }
-
-    /**
-     * 显示验证错误
-     * @param {object} errors - 错误对象
-     */
-    showValidationErrors(errors) {
-        const firstError = Object.values(errors)[0];
-        Toast.error(firstError);
-
-        // 聚焦到第一个有错误的字段
-        const firstErrorField = Object.keys(errors)[0];
-        const fieldElement = this.elements[firstErrorField];
-        if (fieldElement) {
-            fieldElement.focus();
-        }
-    }
-
-    /**
-     * 获取位置坐标
-     * @param {string} destination - 目的地
-     * @returns {Promise<object|null>} 坐标对象
-     */
-    async getLocationCoordinates(destination) {
-        try {
-            const location = await amap.geocodeAddress(destination);
-            return {
-                lng: location.lng,
-                lat: location.lat
-            };
-        } catch (error) {
-            console.warn('获取位置坐标失败:', error);
-            return null;
-        }
-    }
-
-    /**
-     * 处理目的地输入
-     * @param {Event} e - 输入事件
-     */
-    async handleDestinationInput(e) {
-        const keyword = e.target.value.trim();
-
-        if (keyword.length < 2) {
-            this.hideSuggestions();
-            return;
-        }
-
-        try {
-            const suggestions = await amap.searchPlaceSuggestions(keyword);
-            this.showSuggestions(suggestions);
-        } catch (error) {
-            console.error('搜索地点建议失败:', error);
-            this.hideSuggestions();
-        }
-    }
-
-    /**
-     * 显示位置建议
-     * @param {Array} suggestions - 建议列表
-     */
-    showSuggestions(suggestions) {
-        const container = this.elements.locationSuggestions;
-
-        if (suggestions.length === 0) {
-            this.hideSuggestions();
-            return;
-        }
-
-        // 生成建议项HTML
-        const html = suggestions.map(item => `
-            <div class="suggestion-item" data-lng="${item.location.lng}" data-lat="${item.location.lat}">
-                <strong>${this.escapeHtml(item.name)}</strong>
-                ${item.address ? `<br><small>${this.escapeHtml(item.address)}</small>` : ''}
-            </div>
-        `).join('');
-
-        DOM.setContent(container, html);
-        container.style.display = 'block';
-
-        // 绑定点击事件
-        container.querySelectorAll('.suggestion-item').forEach(item => {
-            DOM.on(item, 'click', () => {
-                const name = item.querySelector('strong').textContent;
-                this.elements.tripDestination.value = name;
-                this.hideSuggestions();
-            });
-        });
-
-        this.isLocationSuggestionsVisible = true;
-    }
-
-    /**
-     * 隐藏位置建议
-     */
-    hideSuggestions() {
-        this.elements.locationSuggestions.style.display = 'none';
-        this.isLocationSuggestionsVisible = false;
-    }
-
-    /**
-     * 处理筛选变化
-     * @param {Event} e - 变化事件
-     */
-    handleFilterChange(e) {
-        this.currentFilter = e.target.value;
-        this.renderTrips();
-
-        // 更新地图显示
-        const filteredTrips = this.getFilteredTrips();
-        amap.showTripsOnMap(filteredTrips);
-    }
-
-    /**
-     * 确认删除
-     */
-    confirmDelete() {
-        if (this.deletingTripId) {
-            const success = storage.deleteTrip(this.deletingTripId);
-            if (success) {
-                Toast.success('旅行计划删除成功');
-                this.loadTrips();
-                this.hideModal('confirmModal');
-            }
-            this.deletingTripId = null;
-        }
-    }
-
-    /**
-     * 获取当前位置
-     */
-    async getCurrentLocation() {
-        try {
-            Loading.show();
-            await amap.getCurrentLocation();
-            Toast.success('定位成功');
-        } catch (error) {
-            console.error('定位失败:', error);
-            Toast.error('定位失败，请检查定位权限');
-        } finally {
-            Loading.hide();
-        }
-    }
-
-    /**
-     * HTML转义
-     * @param {string} text - 文本
-     * @returns {string} 转义后的文本
-     */
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+    viewTrip(tripId) {
+        console.log('查看行程:', tripId);
+        // TODO: 实现查看逻辑
     }
 }
 
-// DOM加载完成后初始化应用
-document.addEventListener('DOMContentLoaded', () => {
-    window.travelApp = new TravelPlannerApp();
-});
+// 创建全局应用实例
+let app = null;
+
+// 导出应用类
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = TravelPlannerApp;
+}

@@ -667,6 +667,54 @@ body {
     100% { transform: rotate(360deg); }
 }
 
+/* Toast通知样式 */
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+    padding: 16px 24px;
+    z-index: 4000;
+    min-width: 300px;
+    transform: translateX(400px);
+    transition: var(--transition);
+    border-left: 4px solid var(--success-color);
+}
+
+.toast.show {
+    transform: translateX(0);
+}
+
+.toast.success {
+    border-left-color: var(--success-color);
+}
+
+.toast.error {
+    border-left-color: var(--error-color);
+}
+
+.toast.warning {
+    border-left-color: var(--warning-color);
+}
+
+.toast.info {
+    border-left-color: var(--info-color);
+}
+
+.toast-message {
+    font-size: 14px;
+    color: var(--gray-700);
+    margin: 0;
+}
+
+/* 地图容器 */
+#mainMap {
+    width: 100%;
+    height: 100%;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
     .header-content {
@@ -709,6 +757,17 @@ body {
         right: 0;
         height: 100%;
         z-index: 200;
+    }
+
+    .toast {
+        right: 10px;
+        left: 10px;
+        min-width: auto;
+        transform: translateY(-100px);
+    }
+
+    .toast.show {
+        transform: translateY(0);
     }
 }
 

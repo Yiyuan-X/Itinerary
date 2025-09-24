@@ -19,6 +19,19 @@
         </div>
     </div>
 
+    <!-- 页面加载指示器 -->
+    <div id="loading" class="loader-overlay hidden">
+        <div class="loader-content">
+            <div class="spinner"></div>
+            <p>加载中...</p>
+        </div>
+    </div>
+
+    <!-- Toast通知 -->
+    <div id="toast" class="toast hidden">
+        <div class="toast-message"></div>
+    </div>
+
     <!-- 主应用容器 -->
     <div id="app" class="app-container">
         <!-- 头部导航栏 -->
@@ -387,7 +400,32 @@
     <script>
         // 应用初始化
         document.addEventListener('DOMContentLoaded', function() {
-            const app = new TravelPlannerApp();
+            try {
+                console.log('DOM加载完成，开始初始化应用...');
+                app = new TravelPlannerApp();
+                window.app = app; // 暴露到全局作用域以供HTML中的onclick使用
+            } catch (error) {
+                console.error('应用初始化异常:', error);
+                // 显示错误信息
+                document.body.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #f8fafc;">
+                        <div style="text-align: center; padding: 40px; background: white; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+                            <h2 style="color: #ef4444; margin-bottom: 16px;">应用初始化失败</h2>
+                            <p style="color: #64748b; margin-bottom: 24px;">请检查浏览器控制台获取详细错误信息</p>
+                            <button onclick="location.reload()" style="padding: 12px 24px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer;">重新加载</button>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        // 全局错误处理
+        window.addEventListener('error', function(e) {
+            console.error('全局错误:', e.error);
+        });
+
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('未处理的Promise拒绝:', e.reason);
         });
     </script>
 </body>
