@@ -1,0 +1,284 @@
+/**
+ * 行程管理相关样式
+ */
+
+/* 行程卡片网格 */
+.trips-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
+
+/* 行程卡片 */
+.trip-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: 1px solid #e5e7eb;
+}
+
+.trip-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* 行程卡片头部 */
+.trip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.trip-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+    flex: 1;
+    line-height: 1.4;
+}
+
+/* 行程状态 */
+.trip-status {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.trip-status.planning {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.trip-status.confirmed {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.trip-status.ongoing {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.trip-status.completed {
+    background-color: #e5e7eb;
+    color: #374151;
+}
+
+.trip-status.cancelled {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+/* 行程日期 */
+.trip-dates {
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.trip-dates::before {
+    content: "📅";
+    font-size: 16px;
+}
+
+/* 行程描述 */
+.trip-description {
+    font-size: 14px;
+    color: #4b5563;
+    line-height: 1.5;
+    margin-bottom: 16px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* 行程操作按钮 */
+.trip-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.trip-actions .btn {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+/* 空状态 */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6b7280;
+}
+
+.empty-content {
+    max-width: 320px;
+    margin: 0 auto;
+}
+
+.empty-content i {
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.empty-content h3 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #374151;
+}
+
+.empty-content p {
+    font-size: 14px;
+    margin-bottom: 24px;
+    line-height: 1.6;
+}
+
+/* 行程表单 */
+.trip-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.trip-form .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.trip-form label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.trip-form input,
+.trip-form select,
+.trip-form textarea {
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.2s ease;
+}
+
+.trip-form input:focus,
+.trip-form select:focus,
+.trip-form textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.trip-form textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* 表单操作按钮 */
+.form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+}
+
+/* 行程过滤器 */
+.trip-filters {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.filter-select {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    background: white;
+    cursor: pointer;
+    min-width: 120px;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+/* 行程统计 */
+.trip-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.stat-item {
+    background: white;
+    padding: 16px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .trips-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        padding: 16px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .trip-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filter-select {
+        min-width: auto;
+    }
+
+    .trip-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
