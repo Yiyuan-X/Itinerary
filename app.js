@@ -250,7 +250,8 @@ class TravelPlannerApp {
             { id: 'loginBtn', handler: () => this.showAuthModal('login') },
             { id: 'registerBtn', handler: () => this.showAuthModal('register') },
             { id: 'startPlanningBtn', handler: () => this.showAuthModal('register') },
-            { id: 'logoutBtn', handler: () => this.logout() }
+            { id: 'logoutBtn', handler: () => this.logout() },
+            { id: 'addTripBtn', handler: () => this.showTripModal() }
         ];
 
         directBindings.forEach(({ id, handler }) => {
@@ -258,8 +259,17 @@ class TravelPlannerApp {
             if (element) {
                 element.addEventListener('click', handler);
                 console.log(`✓ 直接绑定成功: ${id}`);
+            } else {
+                console.warn(`✗ 直接绑定失败: ${id} (元素不存在)`);
             }
         });
+
+        // 为空状态按钮绑定事件
+        const emptyStateBtn = document.querySelector('#emptyTripsState .btn');
+        if (emptyStateBtn) {
+            emptyStateBtn.addEventListener('click', () => this.showTripModal());
+            console.log('✓ 空状态按钮绑定成功');
+        }
     }
 
     /**
@@ -612,16 +622,27 @@ class TravelPlannerApp {
      */
     async loadTrips() {
         try {
+            console.log('开始加载行程列表...');
+
             if (typeof tripManager !== 'undefined') {
                 const trips = await tripManager.loadTrips();
                 this.renderTrips(trips);
+                console.log('从tripManager加载了', trips.length, '个行程');
             } else {
-                // 显示模拟数据
-                this.renderTrips([]);
+                // 从本地存储加载行程数据
+                try {
+                    const trips = JSON.parse(localStorage.getItem('trips') || '[]');
+                    this.renderTrips(trips);
+                    console.log('从localStorage加载了', trips.length, '个行程:', trips);
+                } catch (storageError) {
+                    console.error('本地存储读取失败:', storageError);
+                    this.renderTrips([]);
+                    Toast.error('加载行程数据失败');
+                }
             }
         } catch (error) {
             console.error('加载行程失败:', error);
-            Toast.error('加载行程失败');
+            Toast.error('加载行程失败: ' + error.message);
         }
     }
 
@@ -629,17 +650,34 @@ class TravelPlannerApp {
      * 渲染行程列表
      */
     renderTrips(trips) {
-        if (!this.elements.tripsGrid) return;
+        console.log('渲染行程列表, 行程数量:', trips.length);
+
+        if (!this.elements.tripsGrid) {
+            console.warn('找不到行程网格元素 #tripsGrid');
+            return;
+        }
 
         if (trips.length === 0) {
-            DOM.show(this.elements.emptyTripsState);
+            console.log('没有行程数据，显示空状态');
+            if (this.elements.emptyTripsState) {
+                DOM.show(this.elements.emptyTripsState);
+            }
             DOM.hide(this.elements.tripsGrid);
         } else {
-            DOM.hide(this.elements.emptyTripsState);
+            console.log('有行程数据，渲染行程卡片');
+            if (this.elements.emptyTripsState) {
+                DOM.hide(this.elements.emptyTripsState);
+            }
             DOM.show(this.elements.tripsGrid);
 
-            const tripCards = trips.map(trip => this.createTripCard(trip)).join('');
-            DOM.setContent(this.elements.tripsGrid, tripCards);
+            try {
+                const tripCards = trips.map(trip => this.createTripCard(trip)).join('');
+                DOM.setContent(this.elements.tripsGrid, tripCards);
+                console.log('成功渲染了', trips.length, '个行程卡片');
+            } catch (error) {
+                console.error('渲染行程卡片失败:', error);
+                Toast.error('渲染行程列表失败');
+            }
         }
     }
 
@@ -647,19 +685,52 @@ class TravelPlannerApp {
      * 创建行程卡片
      */
     createTripCard(trip) {
+        console.log('创建行程卡片:', trip);
+
+        // 安全地获取日期字符串
+        const startDate = trip.start_date || '';
+        const endDate = trip.end_date || '';
+
+        // 格式化日期显示
+        let dateDisplay = '';
+        try {
+            if (startDate && endDate) {
+                if (typeof formatDate === 'function') {
+                    dateDisplay = `${formatDate(startDate)} - ${formatDate(endDate)}`;
+                } else {
+                    // 简单的日期格式化
+                    dateDisplay = `${startDate} - ${endDate}`;
+                }
+            } else if (startDate) {
+                dateDisplay = startDate;
+            }
+        } catch (error) {
+            console.warn('日期格式化失败:', error);
+            dateDisplay = `${startDate} - ${endDate}`;
+        }
+
+        // 状态显示文本
+        const statusText = {
+            'planning': '规划中',
+            'confirmed': '已确认',
+            'ongoing': '进行中',
+            'completed': '已完成'
+        }[trip.status] || trip.status || '规划中';
+
         return `
-            <div class="trip-card" data-trip-id="${trip.id}">
+            <div class="trip-card" data-trip-id="${trip.id || ''}">
                 <div class="trip-header">
-                    <h3 class="trip-title">${trip.title}</h3>
-                    <span class="trip-status ${trip.status}">${trip.status}</span>
+                    <h3 class="trip-title">${trip.title || '未命名行程'}</h3>
+                    <span class="trip-status ${trip.status || 'planning'}">${statusText}</span>
                 </div>
                 <div class="trip-dates">
-                    ${formatDate(trip.start_date)} - ${formatDate(trip.end_date)}
+                    ${dateDisplay}
                 </div>
                 <div class="trip-description">${trip.description || ''}</div>
                 <div class="trip-actions">
-                    <button class="btn btn-outline" onclick="app.editTrip(${trip.id})">编辑</button>
-                    <button class="btn btn-primary" onclick="app.viewTrip(${trip.id})">查看</button>
+                    <button class="btn btn-outline" onclick="app.editTrip('${trip.id}')">编辑</button>
+                    <button class="btn btn-primary" onclick="app.viewTrip('${trip.id}')">查看</button>
+                    <button class="btn btn-danger" onclick="app.deleteTrip('${trip.id}')">删除</button>
                 </div>
             </div>
         `;
@@ -669,20 +740,55 @@ class TravelPlannerApp {
      * 显示行程模态框
      */
     showTripModal(trip = null) {
-        if (!this.elements.tripModal) return;
+        console.log('显示行程模态框', trip ? '(编辑模式)' : '(新建模式)');
 
-        Modal.show('tripModal');
+        const tripModal = this.elements.tripModal || DOM.query('#tripModal');
+        if (!tripModal) {
+            console.error('找不到行程模态框元素 #tripModal');
+            Toast.error('行程模态框不可用，请刷新页面后重试');
+            return;
+        }
 
-        if (trip) {
-            this.editingTripId = trip.id;
-            DOM.setContent(DOM.query('#tripModalTitle'), '编辑行程');
-            // 填充表单数据
-            this.fillTripForm(trip);
-        } else {
-            this.editingTripId = null;
-            DOM.setContent(DOM.query('#tripModalTitle'), '新建行程');
-            // 清空表单
-            this.clearTripForm();
+        try {
+            // 显示模态框
+            if (typeof Modal !== 'undefined') {
+                Modal.show('tripModal');
+                console.log('使用Modal工具显示模态框');
+            } else {
+                // 直接操作DOM
+                tripModal.style.display = 'flex';
+                tripModal.classList.add('show');
+                tripModal.classList.remove('hidden');
+                console.log('直接操作DOM显示模态框');
+            }
+
+            // 更新模态框标题和内容
+            const modalTitle = DOM.query('#tripModalTitle');
+            if (trip) {
+                this.editingTripId = trip.id;
+                if (modalTitle) modalTitle.textContent = '编辑行程';
+                this.fillTripForm(trip);
+                console.log('填充编辑数据:', trip);
+            } else {
+                this.editingTripId = null;
+                if (modalTitle) modalTitle.textContent = '新建行程';
+                this.clearTripForm();
+                console.log('清空表单，准备新建行程');
+            }
+
+            // 验证表单元素是否存在
+            const tripForm = this.elements.tripForm || DOM.query('#tripForm');
+            if (!tripForm) {
+                console.error('找不到行程表单元素 #tripForm');
+                Toast.error('行程表单不可用');
+                return;
+            }
+
+            console.log('行程模态框显示成功');
+            Toast.success(trip ? '行程编辑器已打开' : '新建行程窗口已打开');
+        } catch (error) {
+            console.error('显示行程模态框失败:', error);
+            Toast.error('显示行程模态框失败，请刷新页面后重试');
         }
     }
 
@@ -690,7 +796,19 @@ class TravelPlannerApp {
      * 隐藏行程模态框
      */
     hideTripModal() {
-        Modal.hide('tripModal');
+        console.log('隐藏行程模态框');
+
+        const tripModal = this.elements.tripModal || DOM.query('#tripModal');
+        if (tripModal) {
+            if (typeof Modal !== 'undefined') {
+                Modal.hide('tripModal');
+            } else {
+                tripModal.style.display = 'none';
+                tripModal.classList.remove('show');
+                tripModal.classList.add('hidden');
+            }
+            console.log('行程模态框隐藏成功');
+        }
     }
 
     /**
@@ -698,9 +816,20 @@ class TravelPlannerApp {
      */
     async handleTripSubmit(event) {
         event.preventDefault();
+        console.log('处理行程表单提交');
 
         try {
+            // 显示加载状态
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn ? submitBtn.textContent : '';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = '保存中...';
+            }
+
             const formData = new FormData(event.target);
+
+            // 获取表单数据
             const tripData = {
                 title: formData.get('title'),
                 description: formData.get('description'),
@@ -708,6 +837,55 @@ class TravelPlannerApp {
                 end_date: formData.get('end_date'),
                 status: formData.get('status') || 'planning'
             };
+
+            console.log('行程数据:', tripData);
+
+            // 检查FormData是否正确获取到值
+            console.log('FormData调试信息:');
+            for (const [key, value] of formData.entries()) {
+                console.log(`  ${key}: ${value}`);
+            }
+
+            // 基本验证
+            if (!tripData.title || !tripData.start_date || !tripData.end_date) {
+                Toast.error('请填写行程标题、开始日期和结束日期');
+                return;
+            }
+
+            // 检查字段长度
+            if (tripData.title.trim().length === 0) {
+                Toast.error('行程标题不能为空');
+                return;
+            }
+
+            if (tripData.title.length > 100) {
+                Toast.error('行程标题不能超过100个字符');
+                return;
+            }
+
+            // 日期验证
+            const startDate = new Date(tripData.start_date);
+            const endDate = new Date(tripData.end_date);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                Toast.error('请输入有效的日期');
+                return;
+            }
+
+            if (startDate > endDate) {
+                Toast.error('开始日期不能晚于结束日期');
+                return;
+            }
+
+            // 检查日期是否太久远
+            if (startDate < new Date('1900-01-01') || endDate > new Date('2099-12-31')) {
+                Toast.error('请输入合理的日期范围');
+                return;
+            }
+
+            console.log('表单验证通过，开始保存行程...');
 
             if (typeof tripManager !== 'undefined') {
                 if (this.editingTripId) {
@@ -717,16 +895,77 @@ class TravelPlannerApp {
                     await tripManager.createTrip(tripData);
                     Toast.success('行程创建成功！');
                 }
+
+                // 关闭模态框
+                this.hideTripModal();
+
+                // 刷新行程列表（如果在行程页面）
+                if (document.querySelector('#tripsSection:not(.hidden)')) {
+                    this.loadTrips();
+                }
             } else {
-                console.log('模拟行程操作:', tripData);
-                Toast.success(this.editingTripId ? '行程更新成功！' : '行程创建成功！');
+                // 模拟行程操作
+                console.log('tripManager不存在，使用模拟操作:', tripData);
+
+                // 生成行程ID
+                const tripId = this.editingTripId || (typeof generateId === 'function' ? generateId() : Date.now().toString());
+
+                // 创建完整的行程对象
+                const fullTripData = {
+                    ...tripData,
+                    id: tripId,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+
+                // 保存到本地存储（模拟）
+                try {
+                    const existingTrips = JSON.parse(localStorage.getItem('trips') || '[]');
+
+                    if (this.editingTripId) {
+                        // 更新现有行程
+                        const index = existingTrips.findIndex(trip => trip.id === this.editingTripId);
+                        if (index !== -1) {
+                            existingTrips[index] = { ...existingTrips[index], ...tripData, updated_at: new Date().toISOString() };
+                        }
+                        console.log('更新行程到本地存储');
+                    } else {
+                        // 添加新行程
+                        existingTrips.push(fullTripData);
+                        console.log('添加新行程到本地存储');
+                    }
+
+                    localStorage.setItem('trips', JSON.stringify(existingTrips));
+
+                    const operation = this.editingTripId ? '更新' : '创建';
+                    console.log(`${operation}行程成功，ID: ${tripId}`);
+
+                    // 显示成功消息
+                    Toast.success(`行程${operation}成功！`);
+
+                    // 关闭模态框
+                    this.hideTripModal();
+
+                    // 刷新行程列表（如果在行程页面）
+                    if (document.querySelector('#tripsSection:not(.hidden)')) {
+                        this.loadTrips();
+                    }
+                } catch (storageError) {
+                    console.error('本地存储操作失败:', storageError);
+                    Toast.error('保存失败，请检查浏览器存储权限');
+                }
             }
 
-            this.hideTripModal();
-            this.loadTrips();
         } catch (error) {
             console.error('行程操作失败:', error);
-            Toast.error('操作失败，请稍后重试');
+            Toast.error('操作失败：' + error.message);
+        } finally {
+            // 恢复按钮状态
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText || '保存行程';
+            }
         }
     }
 
@@ -781,7 +1020,22 @@ class TravelPlannerApp {
      */
     editTrip(tripId) {
         console.log('编辑行程:', tripId);
-        // TODO: 实现编辑逻辑
+
+        try {
+            // 从本地存储中查找行程
+            const trips = JSON.parse(localStorage.getItem('trips') || '[]');
+            const trip = trips.find(t => t.id === tripId);
+
+            if (trip) {
+                this.showTripModal(trip);
+            } else {
+                console.error('未找到指定行程ID:', tripId);
+                Toast.error('未找到指定的行程');
+            }
+        } catch (error) {
+            console.error('编辑行程失败:', error);
+            Toast.error('编辑行程失败');
+        }
     }
 
     /**
@@ -790,6 +1044,40 @@ class TravelPlannerApp {
     viewTrip(tripId) {
         console.log('查看行程:', tripId);
         // TODO: 实现查看逻辑
+        Toast.info('查看行程功能正在开发中...');
+    }
+
+    /**
+     * 删除行程
+     */
+    async deleteTrip(tripId) {
+        console.log('删除行程:', tripId);
+
+        try {
+            // 确认删除
+            if (!confirm('确定要删除这个行程吗？此操作不可恢复。')) {
+                return;
+            }
+
+            if (typeof tripManager !== 'undefined') {
+                await tripManager.deleteTrip(tripId);
+            } else {
+                // 从本地存储中删除
+                const trips = JSON.parse(localStorage.getItem('trips') || '[]');
+                const filteredTrips = trips.filter(t => t.id !== tripId);
+                localStorage.setItem('trips', JSON.stringify(filteredTrips));
+            }
+
+            Toast.success('行程删除成功');
+
+            // 刷新行程列表
+            if (document.querySelector('#tripsSection:not(.hidden)')) {
+                this.loadTrips();
+            }
+        } catch (error) {
+            console.error('删除行程失败:', error);
+            Toast.error('删除行程失败');
+        }
     }
 }
 

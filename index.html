@@ -166,7 +166,7 @@
                         <i class="icon-trip-empty"></i>
                         <h3>还没有行程</h3>
                         <p>创建你的第一个行程，开始精彩的旅程吧！</p>
-                        <button class="btn btn-primary">创建行程</button>
+                        <button class="btn btn-primary" onclick="app.showTripModal()">创建行程</button>
                     </div>
                 </div>
             </section>
@@ -345,11 +345,11 @@
                     <div class="form-row">
                         <div class="input-group">
                             <label for="tripTitle">行程标题 *</label>
-                            <input type="text" id="tripTitle" required>
+                            <input type="text" id="tripTitle" name="title" required>
                         </div>
                         <div class="input-group">
                             <label for="tripStatus">状态</label>
-                            <select id="tripStatus">
+                            <select id="tripStatus" name="status">
                                 <option value="planning">规划中</option>
                                 <option value="confirmed">已确认</option>
                                 <option value="ongoing">进行中</option>
@@ -361,17 +361,17 @@
                     <div class="form-row">
                         <div class="input-group">
                             <label for="tripStartDate">开始日期 *</label>
-                            <input type="date" id="tripStartDate" required>
+                            <input type="date" id="tripStartDate" name="start_date" required>
                         </div>
                         <div class="input-group">
                             <label for="tripEndDate">结束日期 *</label>
-                            <input type="date" id="tripEndDate" required>
+                            <input type="date" id="tripEndDate" name="end_date" required>
                         </div>
                     </div>
 
                     <div class="input-group">
                         <label for="tripDescription">描述</label>
-                        <textarea id="tripDescription" rows="3"></textarea>
+                        <textarea id="tripDescription" name="description" rows="3"></textarea>
                     </div>
 
                     <div class="form-actions">
