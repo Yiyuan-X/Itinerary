@@ -282,15 +282,15 @@
                 <form id="loginForm" class="auth-form">
                     <div class="input-group">
                         <label for="loginEmail">邮箱</label>
-                        <input type="email" id="loginEmail" required>
+                        <input type="email" id="loginEmail" name="email" required>
                     </div>
                     <div class="input-group">
                         <label for="loginPassword">密码</label>
-                        <input type="password" id="loginPassword" required>
+                        <input type="password" id="loginPassword" name="password" required>
                     </div>
                     <div class="form-options">
                         <label class="checkbox">
-                            <input type="checkbox" id="rememberMe">
+                            <input type="checkbox" id="rememberMe" name="rememberMe">
                             <span>记住我</span>
                         </label>
                         <a href="#" id="forgotPasswordBtn">忘记密码？</a>
@@ -302,23 +302,23 @@
                 <form id="registerForm" class="auth-form hidden">
                     <div class="input-group">
                         <label for="registerUsername">用户名</label>
-                        <input type="text" id="registerUsername" required>
+                        <input type="text" id="registerUsername" name="username" required>
                     </div>
                     <div class="input-group">
                         <label for="registerEmail">邮箱</label>
-                        <input type="email" id="registerEmail" required>
+                        <input type="email" id="registerEmail" name="email" required>
                     </div>
                     <div class="input-group">
                         <label for="registerPassword">密码</label>
-                        <input type="password" id="registerPassword" required>
+                        <input type="password" id="registerPassword" name="password" required>
                     </div>
                     <div class="input-group">
                         <label for="confirmPassword">确认密码</label>
-                        <input type="password" id="confirmPassword" required>
+                        <input type="password" id="confirmPassword" name="confirmPassword" required>
                     </div>
                     <div class="form-options">
                         <label class="checkbox">
-                            <input type="checkbox" id="agreeTerms" required>
+                            <input type="checkbox" id="agreeTerms" name="agreeTerms" required>
                             <span>我同意 <a href="#" target="_blank">用户协议</a> 和 <a href="#" target="_blank">隐私政策</a></span>
                         </label>
                     </div>

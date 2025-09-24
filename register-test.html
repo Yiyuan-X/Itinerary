@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册功能测试</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .test-form {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin: 20px 0;
+        }
+        .form-row {
+            display: flex;
+            gap: 20px;
+        }
+        .form-row .input-group {
+            flex: 1;
+        }
+        .debug-panel {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .debug-log {
+            font-family: monospace;
+            font-size: 12px;
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-success { background: #10b981; }
+        .status-error { background: #ef4444; }
+        .status-pending { background: #f59e0b; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>注册功能测试页面</h1>
+
+        <div class="debug-panel">
+            <h3>系统状态</h3>
+            <div id="systemStatus">
+                <div><span class="status-indicator status-pending"></span>正在检测系统状态...</div>
+            </div>
+        </div>
+
+        <div class="test-form">
+            <h2>用户注册</h2>
+            <form id="testRegisterForm">
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="username">用户名 *</label>
+                        <input type="text" id="username" name="username" required placeholder="请输入用户名">
+                    </div>
+                    <div class="input-group">
+                        <label for="email">邮箱 *</label>
+                        <input type="email" id="email" name="email" required placeholder="example@email.com">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="password">密码 *</label>
+                        <input type="password" id="password" name="password" required placeholder="至少6位密码">
+                    </div>
+                    <div class="input-group">
+                        <label for="confirmPassword">确认密码 *</label>
+                        <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="再次输入密码">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="checkbox">
+                        <input type="checkbox" name="agreeTerms" id="agreeTerms" required>
+                        <span>我同意用户协议和隐私政策</span>
+                    </label>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">注册账号</button>
+                    <button type="button" id="fillTestData" class="btn btn-outline">填充测试数据</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="debug-panel">
+            <h3>调试日志</h3>
+            <div id="debugLog" class="debug-log"></div>
+            <button type="button" id="clearLog" class="btn btn-secondary" style="margin-top: 10px;">清空日志</button>
+        </div>
+    </div>
+
+    <!-- Toast通知 -->
+    <div id="toast" class="toast hidden">
+        <div class="toast-message"></div>
+    </div>
+
+    <!-- 加载所需的JavaScript -->
+    <script src="utils.js"></script>
+
+    <script>
+        // 调试日志系统
+        const debugLog = document.getElementById('debugLog');
+        const systemStatus = document.getElementById('systemStatus');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+
+            console.log(logEntry);
+
+            if (debugLog) {
+                debugLog.innerHTML += logEntry + '\n';
+                debugLog.scrollTop = debugLog.scrollHeight;
+            }
+        }
+
+        function updateSystemStatus(status, message) {
+            const indicators = {
+                success: 'status-success',
+                error: 'status-error',
+                pending: 'status-pending'
+            };
+
+            systemStatus.innerHTML = `<div><span class="status-indicator ${indicators[status]}"></span>${message}</div>`;
+        }
+
+        // 注册处理函数
+        async function handleRegister(event) {
+            event.preventDefault();
+            log('开始处理注册表单提交');
+
+            try {
+                const formData = new FormData(event.target);
+
+                // 获取表单数据
+                const userData = {
+                    username: formData.get('username'),
+                    email: formData.get('email'),
+                    password: formData.get('password'),
+                    confirmPassword: formData.get('confirmPassword'),
+                    agreeTerms: formData.get('agreeTerms') === 'on'
+                };
+
+                log('表单数据: ' + JSON.stringify({...userData, password: '***', confirmPassword: '***'}));
+
+                // 基本验证
+                if (!userData.username || !userData.email || !userData.password || !userData.confirmPassword) {
+                    throw new Error('请填写所有必填字段');
+                }
+
+                if (userData.password !== userData.confirmPassword) {
+                    throw new Error('两次输入的密码不一致');
+                }
+
+                if (userData.password.length < 6) {
+                    throw new Error('密码长度至少6位');
+                }
+
+                if (!userData.agreeTerms) {
+                    throw new Error('请同意用户协议和隐私政策');
+                }
+
+                // 邮箱格式验证
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(userData.email)) {
+                    throw new Error('请输入有效的邮箱地址');
+                }
+
+                log('表单验证通过！');
+                updateSystemStatus('success', '注册验证通过');
+
+                // 模拟注册API调用
+                log('模拟API调用...');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // 模拟注册成功
+                log('注册成功！用户数据已保存');
+                updateSystemStatus('success', '注册成功！');
+
+                if (typeof Toast !== 'undefined') {
+                    Toast.success('注册成功！欢迎使用智能行程规划器！');
+                } else {
+                    alert('注册成功！');
+                }
+
+                // 清空表单
+                event.target.reset();
+
+            } catch (error) {
+                log('注册失败: ' + error.message);
+                updateSystemStatus('error', '注册失败: ' + error.message);
+
+                if (typeof Toast !== 'undefined') {
+                    Toast.error(error.message);
+                } else {
+                    alert('注册失败: ' + error.message);
+                }
+            }
+        }
+
+        // 填充测试数据
+        function fillTestData() {
+            document.getElementById('username').value = 'testuser';
+            document.getElementById('email').value = 'test@example.com';
+            document.getElementById('password').value = '123456';
+            document.getElementById('confirmPassword').value = '123456';
+            document.getElementById('agreeTerms').checked = true;
+
+            log('测试数据已填充');
+        }
+
+        // 清空日志
+        function clearLog() {
+            debugLog.innerHTML = '';
+        }
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            log('页面加载完成');
+
+            // 检查依赖
+            if (typeof Toast !== 'undefined') {
+                log('Toast工具已加载');
+                updateSystemStatus('success', '系统就绪');
+            } else {
+                log('Toast工具未加载，使用alert作为备用');
+                updateSystemStatus('pending', '部分功能可能受限');
+            }
+
+            // 绑定事件
+            document.getElementById('testRegisterForm').addEventListener('submit', handleRegister);
+            document.getElementById('fillTestData').addEventListener('click', fillTestData);
+            document.getElementById('clearLog').addEventListener('click', clearLog);
+
+            log('事件绑定完成');
+        });
+
+        // 全局错误处理
+        window.addEventListener('error', function(e) {
+            log('JavaScript错误: ' + e.error.message);
+            updateSystemStatus('error', 'JavaScript错误');
+        });
+    </script>
+</body>
+</html>

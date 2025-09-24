@@ -411,23 +411,53 @@ class TravelPlannerApp {
      */
     async handleLogin(event) {
         event.preventDefault();
+        console.log('处理登录表单提交');
 
         try {
             const formData = new FormData(event.target);
-            const email = formData.get('email');
-            const password = formData.get('password');
-            const rememberMe = formData.get('rememberMe') === 'on';
+
+            // 获取表单数据
+            const loginData = {
+                email: formData.get('email'),
+                password: formData.get('password'),
+                rememberMe: formData.get('rememberMe') === 'on'
+            };
+
+            console.log('登录数据:', { ...loginData, password: '***' }); // 隐藏密码
+
+            // 基本验证
+            if (!loginData.email || !loginData.password) {
+                Toast.error('请填写邮箱和密码');
+                return;
+            }
+
+            // 邮箱格式验证
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(loginData.email)) {
+                Toast.error('请输入有效的邮箱地址');
+                return;
+            }
+
+            console.log('表单验证通过，开始登录...');
 
             if (typeof auth !== 'undefined') {
-                await auth.login(email, password, rememberMe);
+                await auth.login(loginData.email, loginData.password, loginData.rememberMe);
                 this.hideAuthModal();
                 Toast.success('登录成功！');
             } else {
                 // 模拟登录成功
-                console.log('模拟登录:', { email, password, rememberMe });
-                this.onUserAuthenticated({ email, name: '测试用户' });
-                this.hideAuthModal();
-                Toast.success('登录成功！');
+                console.log('模拟登录成功');
+
+                // 模拟延迟
+                setTimeout(() => {
+                    this.onUserAuthenticated({
+                        email: loginData.email,
+                        name: loginData.email.split('@')[0], // 使用邮箱前缀作为用户名
+                        id: generateId ? generateId() : Date.now().toString()
+                    });
+                    this.hideAuthModal();
+                    Toast.success('登录成功！欢迎回来！');
+                }, 500);
             }
         } catch (error) {
             console.error('登录失败:', error);
@@ -440,14 +470,51 @@ class TravelPlannerApp {
      */
     async handleRegister(event) {
         event.preventDefault();
+        console.log('处理注册表单提交');
 
         try {
             const formData = new FormData(event.target);
+
+            // 获取表单数据
             const userData = {
                 username: formData.get('username'),
                 email: formData.get('email'),
-                password: formData.get('password')
+                password: formData.get('password'),
+                confirmPassword: formData.get('confirmPassword'),
+                agreeTerms: formData.get('agreeTerms') === 'on'
             };
+
+            console.log('注册数据:', userData);
+
+            // 基本验证
+            if (!userData.username || !userData.email || !userData.password || !userData.confirmPassword) {
+                Toast.error('请填写所有必填字段');
+                return;
+            }
+
+            if (userData.password !== userData.confirmPassword) {
+                Toast.error('两次输入的密码不一致');
+                return;
+            }
+
+            if (userData.password.length < 6) {
+                Toast.error('密码长度至少6位');
+                return;
+            }
+
+            if (!userData.agreeTerms) {
+                Toast.error('请同意用户协议和隐私政策');
+                return;
+            }
+
+            // 邮箱格式验证
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(userData.email)) {
+                Toast.error('请输入有效的邮箱地址');
+                return;
+            }
+
+            console.log('表单验证通过，开始注册...');
 
             if (typeof auth !== 'undefined') {
                 await auth.register(userData);
@@ -455,10 +522,18 @@ class TravelPlannerApp {
                 Toast.success('注册成功！');
             } else {
                 // 模拟注册成功
-                console.log('模拟注册:', userData);
-                this.onUserAuthenticated({ email: userData.email, name: userData.username });
-                this.hideAuthModal();
-                Toast.success('注册成功！');
+                console.log('模拟注册成功:', userData);
+
+                // 模拟延迟
+                setTimeout(() => {
+                    this.onUserAuthenticated({
+                        email: userData.email,
+                        name: userData.username,
+                        id: generateId ? generateId() : Date.now().toString()
+                    });
+                    this.hideAuthModal();
+                    Toast.success('注册成功！欢迎使用智能行程规划器！');
+                }, 500);
             }
         } catch (error) {
             console.error('注册失败:', error);
