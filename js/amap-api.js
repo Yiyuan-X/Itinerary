@@ -7,8 +7,15 @@ class AmapManager {
     constructor() {
         this.map = null;
         this.markers = [];
+        this.polylines = [];
+        this.infoWindows = [];
         this.autoCompleteService = null;
+        this.placeSearchService = null;
         this.geocoder = null;
+        this.geolocation = null;
+        this.drivingService = null;
+        this.walkingService = null;
+        this.transitService = null;
         this.isInitialized = false;
 
         // 地图配置
@@ -23,6 +30,53 @@ class AmapManager {
             zoomEnable: true,
             dragEnable: true
         };
+
+        // 标记样式配置
+        this.markerStyles = {
+            transport: {
+                icon: '//a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-red.png',
+                size: [25, 34]
+            },
+            accommodation: {
+                icon: '//a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-blue.png',
+                size: [25, 34]
+            },
+            activity: {
+                icon: '//a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-green.png',
+                size: [25, 34]
+            },
+            attraction: {
+                icon: '//a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-yellow.png',
+                size: [25, 34]
+            },
+            default: {
+                icon: '//a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png',
+                size: [25, 34]
+            }
+        };
+
+        // 路线样式配置
+        this.routeStyles = {
+            driving: {
+                strokeColor: '#3b82f6',
+                strokeWeight: 6,
+                strokeOpacity: 0.8
+            },
+            walking: {
+                strokeColor: '#10b981',
+                strokeWeight: 4,
+                strokeOpacity: 0.8,
+                strokeStyle: 'dashed'
+            },
+            transit: {
+                strokeColor: '#f59e0b',
+                strokeWeight: 5,
+                strokeOpacity: 0.8
+            }
+        };
+
+        // 事件监听器
+        this.eventListeners = new Map();
     }
 
     /**
@@ -92,12 +146,602 @@ class AmapManager {
                 'AMap.AutoComplete',
                 'AMap.PlaceSearch',
                 'AMap.Geocoder',
-                'AMap.Geolocation'
+                'AMap.Geolocation',
+                'AMap.Driving',
+                'AMap.Walking',
+                'AMap.Transfer',
+                'AMap.Weather'
             ], () => {
                 try {
                     // 初始化自动完成服务
                     this.autoCompleteService = new AMap.AutoComplete({
-                        city: '全国'
+                        city: '全国',
+                        citylimit: false
+                    });
+
+                    // 初始化地点搜索服务
+                    this.placeSearchService = new AMap.PlaceSearch({
+                        city: '全国',
+                        citylimit: false,
+                        pageSize: 20
+                    });
+
+                    // 初始化地理编码服务
+                    this.geocoder = new AMap.Geocoder({
+                        city: '全国',
+                        radius: 1000
+                    });
+
+                    // 初始化定位服务
+                    this.geolocation = new AMap.Geolocation({
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0,
+                        convert: true,
+                        showButton: true,
+                        buttonPosition: 'LB',
+                        showMarker: true,
+                        showCircle: true
+                    });
+
+                    // 初始化路线规划服务
+                    this.drivingService = new AMap.Driving({
+                        policy: AMap.DrivingPolicy.LEAST_TIME,
+                        ferry: 1,
+                        map: this.map
+                    });
+
+                    this.walkingService = new AMap.Walking({
+                        map: this.map
+                    });
+
+                    this.transitService = new AMap.Transfer({
+                        city: '北京',
+                        policy: AMap.TransferPolicy.LEAST_TIME,
+                        map: this.map
+                    });
+
+                    console.log('地图服务初始化完成');
+                    resolve();
+                } catch (error) {
+                    console.error('地图服务初始化失败:', error);
+                    reject(error);
+                }
+            });
+        });
+    }
+
+    /**
+     * 地理编码 - 将地址转换为经纬度
+     * @param {string} address - 地址
+     * @param {string} city - 城市（可选）
+     * @returns {Promise<Object>} 编码结果
+     */
+    async geocode(address, city = null) {
+        return new Promise((resolve, reject) => {
+            if (!this.geocoder) {
+                reject(new Error('地理编码服务未初始化'));
+                return;
+            }
+
+            const options = { address };
+            if (city) {
+                options.city = city;
+            }
+
+            this.geocoder.getLocation(options, (status, result) => {
+                if (status === 'complete' && result.geocodes.length > 0) {
+                    const location = result.geocodes[0];
+                    resolve({
+                        location: location.location,
+                        formattedAddress: location.formattedAddress,
+                        addressComponents: location.addressComponent,
+                        level: location.level
+                    });
+                } else {
+                    reject(new Error('地理编码失败'));
+                }
+            });
+        });
+    }
+
+    /**
+     * 逆地理编码 - 将经纬度转换为地址
+     * @param {Array|AMap.LngLat} location - 经纬度
+     * @returns {Promise<Object>} 解码结果
+     */
+    async regeocode(location) {
+        return new Promise((resolve, reject) => {
+            if (!this.geocoder) {
+                reject(new Error('地理编码服务未初始化'));
+                return;
+            }
+
+            this.geocoder.getAddress(location, (status, result) => {
+                if (status === 'complete' && result.regeocode) {
+                    const regeocode = result.regeocode;
+                    resolve({
+                        formattedAddress: regeocode.formattedAddress,
+                        addressComponents: regeocode.addressComponent,
+                        crosses: regeocode.crosses,
+                        pois: regeocode.pois
+                    });
+                } else {
+                    reject(new Error('逆地理编码失败'));
+                }
+            });
+        });
+    }
+
+    /**
+     * 搜索地点
+     * @param {string} keyword - 搜索关键词
+     * @param {string} city - 搜索城市（可选）
+     * @param {Object} options - 搜索选项
+     * @returns {Promise<Array>} 搜索结果
+     */
+    async searchPlaces(keyword, city = null, options = {}) {
+        return new Promise((resolve, reject) => {
+            if (!this.placeSearchService) {
+                reject(new Error('地点搜索服务未初始化'));
+                return;
+            }
+
+            // 设置搜索城市
+            if (city) {
+                this.placeSearchService.setCity(city);
+            }
+
+            this.placeSearchService.search(keyword, (status, result) => {
+                if (status === 'complete' && result.poiList) {
+                    const places = result.poiList.pois.map(poi => ({
+                        id: poi.id,
+                        name: poi.name,
+                        address: poi.address,
+                        location: poi.location,
+                        distance: poi.distance,
+                        tel: poi.tel,
+                        type: poi.type,
+                        website: poi.website,
+                        photos: poi.photos
+                    }));
+                    resolve(places);
+                } else {
+                    reject(new Error('搜索地点失败'));
+                }
+            });
+        });
+    }
+
+    /**
+     * 周边搜索
+     * @param {Array|AMap.LngLat} center - 中心点
+     * @param {string} keyword - 搜索关键词
+     * @param {number} radius - 搜索半径（米）
+     * @returns {Promise<Array>} 搜索结果
+     */
+    async searchNearby(center, keyword, radius = 1000) {
+        return new Promise((resolve, reject) => {
+            if (!this.placeSearchService) {
+                reject(new Error('地点搜索服务未初始化'));
+                return;
+            }
+
+            this.placeSearchService.searchNearBy(keyword, center, radius, (status, result) => {
+                if (status === 'complete' && result.poiList) {
+                    const places = result.poiList.pois.map(poi => ({
+                        id: poi.id,
+                        name: poi.name,
+                        address: poi.address,
+                        location: poi.location,
+                        distance: poi.distance,
+                        tel: poi.tel,
+                        type: poi.type
+                    }));
+                    resolve(places);
+                } else {
+                    reject(new Error('周边搜索失败'));
+                }
+            });
+        });
+    }
+
+    /**
+     * 驾车路线规划
+     * @param {Array|AMap.LngLat} start - 起点
+     * @param {Array|AMap.LngLat} end - 终点
+     * @param {Array} waypoints - 途经点（可选）
+     * @param {Object} options - 路线选项
+     * @returns {Promise<Object>} 路线结果
+     */
+    async planDrivingRoute(start, end, waypoints = [], options = {}) {
+        return new Promise((resolve, reject) => {
+            if (!this.drivingService) {
+                reject(new Error('驾车路线服务未初始化'));
+                return;
+            }
+
+            // 设置路线策略
+            if (options.policy) {
+                this.drivingService.setPolicy(options.policy);
+            }
+
+            this.drivingService.search(start, end, {
+                waypoints: waypoints
+            }, (status, result) => {
+                if (status === 'complete') {
+                    const route = result.routes[0];
+                    resolve({
+                        distance: route.distance,
+                        time: route.time,
+                        tolls: route.tolls,
+                        tollDistance: route.tollDistance,
+                        paths: route.steps.map(step => ({
+                            instruction: step.instruction,
+                            distance: step.distance,
+                            time: step.time,
+                            path: step.path
+                        }))
+                    });
+                } else {
+                    reject(new Error('驾车路线规划失败'));
+                }
+            });
+        });
+    }
+
+    /**
+     * 步行路线规划
+     * @param {Array|AMap.LngLat} start - 起点
+     * @param {Array|AMap.LngLat} end - 终点
+     * @returns {Promise<Object>} 路线结果
+     */
+    async planWalkingRoute(start, end) {
+        return new Promise((resolve, reject) => {
+            if (!this.walkingService) {
+                reject(new Error('步行路线服务未初始化'));
+                return;
+            }
+
+            this.walkingService.search(start, end, (status, result) => {
+                if (status === 'complete') {
+                    const route = result.routes[0];
+                    resolve({
+                        distance: route.distance,
+                        time: route.time,
+                        paths: route.steps.map(step => ({
+                            instruction: step.instruction,
+                            distance: step.distance,
+                            time: step.time,
+                            path: step.path
+                        }))
+                    });
+                } else {
+                    reject(new Error('步行路线规划失败'));
+                }
+            });
+        });
+    }
+
+    /**
+     * 公交路线规划
+     * @param {Array|AMap.LngLat} start - 起点
+     * @param {Array|AMap.LngLat} end - 终点
+     * @param {string} city - 城市
+     * @param {Object} options - 路线选项
+     * @returns {Promise<Object>} 路线结果
+     */
+    async planTransitRoute(start, end, city, options = {}) {
+        return new Promise((resolve, reject) => {
+            if (!this.transitService) {
+                reject(new Error('公交路线服务未初始化'));
+                return;
+            }
+
+            // 设置城市
+            this.transitService.setCity(city);
+
+            // 设置路线策略
+            if (options.policy) {
+                this.transitService.setPolicy(options.policy);
+            }
+
+            this.transitService.search(start, end, (status, result) => {
+                if (status === 'complete' && result.plans.length > 0) {
+                    const plans = result.plans.map(plan => ({
+                        distance: plan.distance,
+                        time: plan.time,
+                        cost: plan.cost,
+                        segments: plan.segments.map(segment => ({
+                            transit_mode: segment.transit_mode,
+                            distance: segment.distance,
+                            time: segment.time,
+                            instruction: segment.instruction
+                        }))
+                    }));
+                    resolve({ plans });
+                } else {
+                    reject(new Error('公交路线规划失败'));
+                }
+            });
+        });
+    }
+
+    /**
+     * 添加标记
+     * @param {Array|AMap.LngLat} position - 位置
+     * @param {Object} options - 标记选项
+     * @returns {AMap.Marker} 标记对象
+     */
+    addMarker(position, options = {}) {
+        const markerOptions = {
+            position: position,
+            title: options.title || '',
+            content: options.content,
+            ...options
+        };
+
+        // 设置标记样式
+        if (options.type && this.markerStyles[options.type]) {
+            const style = this.markerStyles[options.type];
+            markerOptions.icon = style.icon;
+            markerOptions.size = style.size;
+        }
+
+        const marker = new AMap.Marker(markerOptions);
+        marker.setMap(this.map);
+
+        // 添加点击事件
+        if (options.onClick) {
+            marker.on('click', options.onClick);
+        }
+
+        // 添加信息窗口
+        if (options.infoWindow) {
+            const infoWindow = new AMap.InfoWindow({
+                content: options.infoWindow.content,
+                offset: new AMap.Pixel(0, -30)
+            });
+
+            marker.on('click', () => {
+                infoWindow.open(this.map, marker.getPosition());
+            });
+
+            this.infoWindows.push(infoWindow);
+        }
+
+        this.markers.push(marker);
+        return marker;
+    }
+
+    /**
+     * 批量添加标记
+     * @param {Array} markersData - 标记数据数组
+     * @returns {Array} 标记对象数组
+     */
+    addMarkers(markersData) {
+        return markersData.map(markerData =>
+            this.addMarker(markerData.position, markerData.options)
+        );
+    }
+
+    /**
+     * 清除所有标记
+     */
+    clearMarkers() {
+        this.markers.forEach(marker => {
+            marker.setMap(null);
+        });
+        this.markers = [];
+    }
+
+    /**
+     * 清除所有信息窗口
+     */
+    clearInfoWindows() {
+        this.infoWindows.forEach(infoWindow => {
+            infoWindow.close();
+        });
+        this.infoWindows = [];
+    }
+
+    /**
+     * 添加路线
+     * @param {Array} path - 路径点数组
+     * @param {Object} options - 路线选项
+     * @returns {AMap.Polyline} 路线对象
+     */
+    addPolyline(path, options = {}) {
+        const polylineOptions = {
+            path: path,
+            strokeColor: options.strokeColor || '#3b82f6',
+            strokeWeight: options.strokeWeight || 6,
+            strokeOpacity: options.strokeOpacity || 0.8,
+            strokeStyle: options.strokeStyle || 'solid',
+            ...options
+        };
+
+        const polyline = new AMap.Polyline(polylineOptions);
+        polyline.setMap(this.map);
+        this.polylines.push(polyline);
+
+        return polyline;
+    }
+
+    /**
+     * 清除所有路线
+     */
+    clearPolylines() {
+        this.polylines.forEach(polyline => {
+            polyline.setMap(null);
+        });
+        this.polylines = [];
+    }
+
+    /**
+     * 显示行程路线
+     * @param {Object} trip - 行程对象
+     */
+    async displayTripRoute(trip) {
+        try {
+            this.clearMarkers();
+            this.clearPolylines();
+            this.clearInfoWindows();
+
+            if (!trip || !trip.items || trip.items.length === 0) {
+                return;
+            }
+
+            // 添加行程项目标记
+            const bounds = new AMap.Bounds();
+            trip.items.forEach((item, index) => {
+                if (item.location_coordinates) {
+                    const position = [
+                        item.location_coordinates.longitude,
+                        item.location_coordinates.latitude
+                    ];
+
+                    // 添加标记
+                    this.addMarker(position, {
+                        type: item.item_type,
+                        title: item.title,
+                        infoWindow: {
+                            content: this.createInfoWindowContent(item)
+                        }
+                    });
+
+                    bounds.extend(position);
+                }
+            });
+
+            // 调整地图视野
+            if (bounds.northeast && bounds.southwest) {
+                this.map.setBounds(bounds);
+            }
+
+            // 连接路线
+            await this.connectTripItems(trip.items);
+
+        } catch (error) {
+            console.error('显示行程路线失败:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 连接行程项目路线
+     * @param {Array} items - 行程项目数组
+     */
+    async connectTripItems(items) {
+        const transportItems = items
+            .filter(item => item.location_coordinates)
+            .sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime));
+
+        for (let i = 0; i < transportItems.length - 1; i++) {
+            const start = [
+                transportItems[i].location_coordinates.longitude,
+                transportItems[i].location_coordinates.latitude
+            ];
+            const end = [
+                transportItems[i + 1].location_coordinates.longitude,
+                transportItems[i + 1].location_coordinates.latitude
+            ];
+
+            try {
+                // 根据项目类型选择路线规划方式
+                const routeType = this.determineRouteType(transportItems[i], transportItems[i + 1]);
+                let routeResult;
+
+                switch (routeType) {
+                    case 'driving':
+                        routeResult = await this.planDrivingRoute(start, end);
+                        break;
+                    case 'walking':
+                        routeResult = await this.planWalkingRoute(start, end);
+                        break;
+                    default:
+                        // 直线连接
+                        this.addPolyline([start, end], this.routeStyles.driving);
+                        continue;
+                }
+
+                // 绘制路线
+                if (routeResult && routeResult.paths) {
+                    routeResult.paths.forEach(pathData => {
+                        if (pathData.path) {
+                            this.addPolyline(pathData.path, this.routeStyles[routeType]);
+                        }
+                    });
+                }
+
+            } catch (error) {
+                console.warn('路线规划失败，使用直线连接:', error);
+                this.addPolyline([start, end], {
+                    ...this.routeStyles.driving,
+                    strokeStyle: 'dashed'
+                });
+            }
+        }
+    }
+
+    /**
+     * 确定路线类型
+     * @param {Object} startItem - 起始项目
+     * @param {Object} endItem - 结束项目
+     * @returns {string} 路线类型
+     */
+    determineRouteType(startItem, endItem) {
+        // 简单的路线类型判断逻辑
+        const distance = AMap.GeometryUtil.distance(
+            [startItem.location_coordinates.longitude, startItem.location_coordinates.latitude],
+            [endItem.location_coordinates.longitude, endItem.location_coordinates.latitude]
+        );
+
+        if (distance < 1000) {
+            return 'walking';
+        } else {
+            return 'driving';
+        }
+    }
+
+    /**
+     * 创建信息窗口内容
+     * @param {Object} item - 行程项目
+     * @returns {string} HTML内容
+     */
+    createInfoWindowContent(item) {
+        const startTime = new Date(item.start_datetime).toLocaleString('zh-CN');
+        const endTime = item.end_datetime ? new Date(item.end_datetime).toLocaleString('zh-CN') : '';
+
+        return `
+            <div class="info-window">
+                <h4>${item.title}</h4>
+                <p><strong>类型:</strong> ${this.getItemTypeText(item.item_type)}</p>
+                <p><strong>开始时间:</strong> ${startTime}</p>
+                ${endTime ? `<p><strong>结束时间:</strong> ${endTime}</p>` : ''}
+                ${item.location_name ? `<p><strong>地点:</strong> ${item.location_name}</p>` : ''}
+                ${item.cost ? `<p><strong>费用:</strong> ¥${item.cost}</p>` : ''}
+                ${item.notes ? `<p><strong>备注:</strong> ${item.notes}</p>` : ''}
+            </div>
+        `;
+    }
+
+    /**
+     * 获取项目类型文本
+     * @param {string} type - 项目类型
+     * @returns {string} 类型文本
+     */
+    getItemTypeText(type) {
+        const typeMap = {
+            transport: '交通',
+            accommodation: '住宿',
+            activity: '活动',
+            meal: '餐饮',
+            attraction: '景点',
+            other: '其他'
+        };
+        return typeMap[type] || '未知';
+    }
                     });
 
                     // 初始化地理编码服务

@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能行程规划器</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/auth.css">
+    <link rel="stylesheet" href="styles/trip.css">
+    <link rel="stylesheet" href="styles/map.css">
+    <script src="https://webapi.amap.com/maps?v=2.0&key=your_amap_api_key"></script>
+</head>
+<body>
+    <!-- 全局加载指示器 -->
+    <div id="globalLoader" class="loader-overlay">
+        <div class="loader-content">
+            <div class="spinner"></div>
+            <p>加载中...</p>
+        </div>
+    </div>
+
+    <!-- 主应用容器 -->
+    <div id="app" class="app-container">
+        <!-- 头部导航栏 -->
+        <header id="mainHeader" class="main-header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <img src="assets/logo.svg" alt="智能行程规划器" class="logo">
+                    <h1 class="app-title">智能行程规划器</h1>
+                </div>
+
+                <!-- 未登录状态的导航 -->
+                <nav id="guestNav" class="nav-guest">
+                    <button id="loginBtn" class="btn btn-outline">登录</button>
+                    <button id="registerBtn" class="btn btn-primary">注册</button>
+                </nav>
+
+                <!-- 已登录状态的导航 -->
+                <nav id="userNav" class="nav-user hidden">
+                    <div class="nav-menu">
+                        <button id="homeBtn" class="nav-item active">
+                            <i class="icon-home"></i>
+                            <span>首页</span>
+                        </button>
+                        <button id="tripsBtn" class="nav-item">
+                            <i class="icon-calendar"></i>
+                            <span>行程</span>
+                        </button>
+                        <button id="mapBtn" class="nav-item">
+                            <i class="icon-map"></i>
+                            <span>地图</span>
+                        </button>
+                        <button id="importBtn" class="nav-item">
+                            <i class="icon-import"></i>
+                            <span>导入</span>
+                        </button>
+                    </div>
+
+                    <div class="user-menu">
+                        <div class="user-avatar" id="userAvatar">
+                            <img src="assets/default-avatar.png" alt="用户头像">
+                        </div>
+                        <div class="user-dropdown" id="userDropdown">
+                            <div class="dropdown-item" id="profileBtn">个人资料</div>
+                            <div class="dropdown-item" id="settingsBtn">设置</div>
+                            <div class="dropdown-divider"></div>
+                            <div class="dropdown-item" id="logoutBtn">退出登录</div>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+        </header>
+
+        <!-- 主要内容区域 -->
+        <main id="mainContent" class="main-content">
+            <!-- 欢迎页面（未登录状态） -->
+            <section id="welcomeSection" class="welcome-section">
+                <div class="welcome-content">
+                    <div class="welcome-hero">
+                        <h2>智能行程规划，让旅行更简单</h2>
+                        <p>自动导入票务信息，智能路线规划，实时天气提醒</p>
+                        <div class="welcome-actions">
+                            <button class="btn btn-primary btn-large" id="startPlanningBtn">开始规划</button>
+                            <button class="btn btn-outline btn-large" id="learnMoreBtn">了解更多</button>
+                        </div>
+                    </div>
+                    <div class="welcome-features">
+                        <div class="feature-grid">
+                            <div class="feature-item">
+                                <i class="icon-import-large"></i>
+                                <h3>智能导入</h3>
+                                <p>自动识别航班、火车票信息</p>
+                            </div>
+                            <div class="feature-item">
+                                <i class="icon-map-large"></i>
+                                <h3>路线规划</h3>
+                                <p>集成高德地图，智能规划路线</p>
+                            </div>
+                            <div class="feature-item">
+                                <i class="icon-weather-large"></i>
+                                <h3>天气提醒</h3>
+                                <p>实时天气预报，出行提醒</p>
+                            </div>
+                            <div class="feature-item">
+                                <i class="icon-notification-large"></i>
+                                <h3>智能提醒</h3>
+                                <p>重要时间节点自动提醒</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 行程管理页面 -->
+            <section id="tripsSection" class="trips-section hidden">
+                <div class="section-header">
+                    <div class="header-left">
+                        <h2>我的行程</h2>
+                        <div class="trip-filters">
+                            <select id="tripStatusFilter" class="filter-select">
+                                <option value="all">全部状态</option>
+                                <option value="planning">规划中</option>
+                                <option value="confirmed">已确认</option>
+                                <option value="ongoing">进行中</option>
+                                <option value="completed">已完成</option>
+                            </select>
+                            <select id="tripSortFilter" class="filter-select">
+                                <option value="start_date_desc">开始日期↓</option>
+                                <option value="start_date_asc">开始日期↑</option>
+                                <option value="created_desc">创建时间↓</option>
+                                <option value="updated_desc">更新时间↓</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="header-actions">
+                        <button id="addTripBtn" class="btn btn-primary">
+                            <i class="icon-plus"></i>
+                            新建行程
+                        </button>
+                        <button id="importTripBtn" class="btn btn-outline">
+                            <i class="icon-import"></i>
+                            导入票务
+                        </button>
+                    </div>
+                </div>
+
+                <div id="tripsGrid" class="trips-grid">
+                    <!-- 行程卡片将通过 JavaScript 动态生成 -->
+                </div>
+
+                <div id="emptyTripsState" class="empty-state hidden">
+                    <div class="empty-content">
+                        <i class="icon-trip-empty"></i>
+                        <h3>还没有行程</h3>
+                        <p>创建你的第一个行程，开始精彩的旅程吧！</p>
+                        <button class="btn btn-primary">创建行程</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 地图页面 -->
+            <section id="mapSection" class="map-section hidden">
+                <div class="map-container">
+                    <div id="mainMap" class="map-canvas"></div>
+                    <div class="map-controls">
+                        <div class="map-toolbar">
+                            <button id="locateBtn" class="map-btn" title="定位到我的位置">
+                                <i class="icon-location"></i>
+                            </button>
+                            <button id="layersBtn" class="map-btn" title="地图图层">
+                                <i class="icon-layers"></i>
+                            </button>
+                            <button id="fullscreenBtn" class="map-btn" title="全屏">
+                                <i class="icon-fullscreen"></i>
+                            </button>
+                        </div>
+                        <div class="trip-selector">
+                            <select id="mapTripFilter" class="filter-select">
+                                <option value="">选择要显示的行程</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="map-sidebar">
+                        <div class="sidebar-header">
+                            <h3>行程详情</h3>
+                            <button id="closeSidebar" class="btn-close">×</button>
+                        </div>
+                        <div id="mapSidebarContent" class="sidebar-content">
+                            <!-- 侧边栏内容 -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 导入页面 -->
+            <section id="importSection" class="import-section hidden">
+                <div class="import-container">
+                    <div class="section-header">
+                        <h2>导入票务信息</h2>
+                        <p>支持自动识别航班号、车次号，快速创建行程</p>
+                    </div>
+
+                    <div class="import-methods">
+                        <div class="method-tabs">
+                            <button class="tab-btn active" data-method="text">文本输入</button>
+                            <button class="tab-btn" data-method="image">图片识别</button>
+                            <button class="tab-btn" data-method="email">邮件解析</button>
+                        </div>
+
+                        <!-- 文本输入 -->
+                        <div id="textImport" class="import-method active">
+                            <div class="input-group">
+                                <label>输入航班号/车次号或票务信息：</label>
+                                <textarea id="ticketText" placeholder="例如：CA1234, G123, 或粘贴完整的票务信息"></textarea>
+                                <div class="input-help">
+                                    支持格式：CA1234（航班号）、G123（高铁）、D456（动车）等
+                                </div>
+                            </div>
+                            <button id="parseTextBtn" class="btn btn-primary">解析信息</button>
+                        </div>
+
+                        <!-- 图片识别 -->
+                        <div id="imageImport" class="import-method">
+                            <div class="upload-area" id="imageUpload">
+                                <i class="icon-upload"></i>
+                                <p>拖拽图片到此处或点击上传</p>
+                                <p class="upload-hint">支持 JPG、PNG 格式，最大 10MB</p>
+                                <input type="file" id="imageInput" accept="image/*" hidden>
+                            </div>
+                            <button id="parseImageBtn" class="btn btn-primary hidden">解析图片</button>
+                        </div>
+
+                        <!-- 邮件解析 -->
+                        <div id="emailImport" class="import-method">
+                            <div class="input-group">
+                                <label>邮件内容：</label>
+                                <textarea id="emailContent" placeholder="粘贴包含票务信息的邮件内容"></textarea>
+                            </div>
+                            <button id="parseEmailBtn" class="btn btn-primary">解析邮件</button>
+                        </div>
+                    </div>
+
+                    <!-- 解析结果 -->
+                    <div id="importResults" class="import-results hidden">
+                        <h3>解析结果</h3>
+                        <div id="parsedData" class="parsed-data">
+                            <!-- 解析结果将显示在这里 -->
+                        </div>
+                        <div class="result-actions">
+                            <button id="confirmImportBtn" class="btn btn-primary">确认导入</button>
+                            <button id="editImportBtn" class="btn btn-outline">编辑信息</button>
+                            <button id="cancelImportBtn" class="btn btn-secondary">取消</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- 用户认证模态框 -->
+    <div id="authModal" class="modal">
+        <div class="modal-content auth-modal">
+            <div class="modal-header">
+                <h2 id="authModalTitle">登录</h2>
+                <button class="btn-close" id="closeAuthModal">×</button>
+            </div>
+            <div class="modal-body">
+                <!-- 登录表单 -->
+                <form id="loginForm" class="auth-form">
+                    <div class="input-group">
+                        <label for="loginEmail">邮箱</label>
+                        <input type="email" id="loginEmail" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="loginPassword">密码</label>
+                        <input type="password" id="loginPassword" required>
+                    </div>
+                    <div class="form-options">
+                        <label class="checkbox">
+                            <input type="checkbox" id="rememberMe">
+                            <span>记住我</span>
+                        </label>
+                        <a href="#" id="forgotPasswordBtn">忘记密码？</a>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">登录</button>
+                </form>
+
+                <!-- 注册表单 -->
+                <form id="registerForm" class="auth-form hidden">
+                    <div class="input-group">
+                        <label for="registerUsername">用户名</label>
+                        <input type="text" id="registerUsername" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="registerEmail">邮箱</label>
+                        <input type="email" id="registerEmail" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="registerPassword">密码</label>
+                        <input type="password" id="registerPassword" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="confirmPassword">确认密码</label>
+                        <input type="password" id="confirmPassword" required>
+                    </div>
+                    <div class="form-options">
+                        <label class="checkbox">
+                            <input type="checkbox" id="agreeTerms" required>
+                            <span>我同意 <a href="#" target="_blank">用户协议</a> 和 <a href="#" target="_blank">隐私政策</a></span>
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">注册</button>
+                </form>
+
+                <div class="auth-switch">
+                    <p id="authSwitchText">还没有账号？</p>
+                    <button id="authSwitchBtn" class="btn-link">立即注册</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 行程编辑模态框 -->
+    <div id="tripModal" class="modal">
+        <div class="modal-content trip-modal">
+            <div class="modal-header">
+                <h2 id="tripModalTitle">新建行程</h2>
+                <button class="btn-close" id="closeTripModal">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="tripForm" class="trip-form">
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label for="tripTitle">行程标题 *</label>
+                            <input type="text" id="tripTitle" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="tripStatus">状态</label>
+                            <select id="tripStatus">
+                                <option value="planning">规划中</option>
+                                <option value="confirmed">已确认</option>
+                                <option value="ongoing">进行中</option>
+                                <option value="completed">已完成</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label for="tripStartDate">开始日期 *</label>
+                            <input type="date" id="tripStartDate" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="tripEndDate">结束日期 *</label>
+                            <input type="date" id="tripEndDate" required>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="tripDescription">描述</label>
+                        <textarea id="tripDescription" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelTripBtn">取消</button>
+                        <button type="submit" class="btn btn-primary">保存行程</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知消息容器 -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- JavaScript 文件 -->
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/amap-api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/trip-manager.js"></script>
+    <script src="js/import-manager.js"></script>
+    <script src="js/weather-service.js"></script>
+    <script src="js/notification-manager.js"></script>
+    <script src="js/app.js"></script>
+
+    <script>
+        // 应用初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            const app = new TravelPlannerApp();
+        });
+    </script>
+</body>
+</html>

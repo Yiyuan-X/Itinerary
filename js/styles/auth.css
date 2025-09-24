@@ -1,0 +1,272 @@
+/* 用户认证样式 */
+
+.auth-modal {
+    width: 100%;
+    max-width: 400px;
+}
+
+.auth-form {
+    width: 100%;
+}
+
+.auth-form .input-group {
+    margin-bottom: 20px;
+}
+
+.auth-form input {
+    height: 44px;
+    font-size: 16px;
+}
+
+.form-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    font-size: 14px;
+}
+
+.checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: var(--gray-600);
+}
+
+.checkbox input[type="checkbox"] {
+    width: auto;
+    height: auto;
+    margin: 0;
+}
+
+.btn-link {
+    border: none;
+    background: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    font-size: 14px;
+    text-decoration: underline;
+    transition: var(--transition);
+}
+
+.btn-link:hover {
+    color: var(--primary-dark);
+}
+
+.auth-switch {
+    text-align: center;
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--gray-200);
+}
+
+.auth-switch p {
+    margin-bottom: 8px;
+    color: var(--gray-600);
+}
+
+/* 错误状态 */
+.input-error {
+    border-color: var(--error-color) !important;
+    box-shadow: 0 0 0 3px rgb(239 68 68 / 0.1) !important;
+}
+
+.error-message {
+    color: var(--error-color);
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* 加载状态 */
+.btn-loading {
+    position: relative;
+    color: transparent !important;
+}
+
+.btn-loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.btn-primary.btn-loading::after {
+    border-top-color: white;
+}
+
+/* 社交登录（预留） */
+.social-login {
+    margin: 24px 0;
+}
+
+.social-divider {
+    position: relative;
+    text-align: center;
+    margin: 20px 0;
+}
+
+.social-divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--gray-200);
+    z-index: 1;
+}
+
+.social-divider span {
+    background: white;
+    padding: 0 16px;
+    color: var(--gray-500);
+    font-size: 14px;
+    position: relative;
+    z-index: 2;
+}
+
+.social-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.btn-social {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--border-radius);
+    background: white;
+    color: var(--gray-700);
+    text-decoration: none;
+    transition: var(--transition);
+    font-weight: 500;
+}
+
+.btn-social:hover {
+    background: var(--gray-50);
+}
+
+.btn-social img {
+    width: 20px;
+    height: 20px;
+}
+
+/* 密码强度指示器 */
+.password-strength {
+    margin-top: 8px;
+}
+
+.strength-bar {
+    height: 3px;
+    background: var(--gray-200);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.strength-fill {
+    height: 100%;
+    transition: var(--transition);
+    border-radius: 2px;
+}
+
+.strength-weak .strength-fill {
+    width: 33%;
+    background: var(--error-color);
+}
+
+.strength-medium .strength-fill {
+    width: 66%;
+    background: var(--warning-color);
+}
+
+.strength-strong .strength-fill {
+    width: 100%;
+    background: var(--success-color);
+}
+
+.strength-text {
+    font-size: 12px;
+    margin-top: 4px;
+    color: var(--gray-500);
+}
+
+/* 验证码输入 */
+.verification-code {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin: 20px 0;
+}
+
+.code-input {
+    width: 40px !important;
+    height: 48px !important;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 600;
+    border: 2px solid var(--gray-300);
+    border-radius: var(--border-radius);
+}
+
+.code-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgb(37 99 235 / 0.1);
+}
+
+.code-input.filled {
+    border-color: var(--success-color);
+    background: var(--success-color);
+    color: white;
+}
+
+/* 忘记密码表单 */
+.forgot-password-form {
+    text-align: center;
+}
+
+.forgot-password-form p {
+    margin-bottom: 24px;
+    color: var(--gray-600);
+    font-size: 14px;
+}
+
+.back-to-login {
+    margin-top: 16px;
+}
+
+/* 响应式设计 */
+@media (max-width: 480px) {
+    .auth-modal {
+        margin: 16px;
+        max-width: calc(100vw - 32px);
+    }
+
+    .form-options {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .verification-code {
+        gap: 4px;
+    }
+
+    .code-input {
+        width: 36px !important;
+        height: 44px !important;
+        font-size: 16px;
+    }
+}
